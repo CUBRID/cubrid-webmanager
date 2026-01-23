@@ -2,7 +2,7 @@ name: Build Executables
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
     tags:
       - 'v*'
   workflow_dispatch:

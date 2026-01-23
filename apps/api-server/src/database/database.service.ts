@@ -757,19 +757,6 @@ export class DatabaseService {
     // Collect files to check before parsing exvol
     const filesToCheck: string[] = [];
 
-    // Add default database files
-    // const dbname = request.dbname;
-    // const genvolpath = request.genvolpath;
-    // filesToCheck.push(
-    //   `${genvolpath}/${dbname}`,
-    //   `${genvolpath}/${dbname}_dwb`,
-    //   `${genvolpath}/${dbname}_keys`,
-    //   `${genvolpath}/${dbname}_lgar_t`,
-    //   `${genvolpath}/${dbname}_lgat`,
-    //   `${genvolpath}/${dbname}_lgat__lock`,
-    //   `${genvolpath}/${dbname}_lginf`,
-    //   `${genvolpath}/${dbname}_vinf`,
-    // );
 
     // Add exvol volume paths (before parsing/converting)
     if (request.exvol && Array.isArray(request.exvol)) {

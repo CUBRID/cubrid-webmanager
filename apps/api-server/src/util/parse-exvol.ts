@@ -26,8 +26,6 @@ export interface ParsedExvol {
 /**
  * Parses an extended volume string in the format "type;size;path".
  * 
- * Format: [볼륨타입];[볼륨 크기를 페이지 크기로 나눈 값];[경로]
- * 
  * @param volumeString - Volume string in format "type;size;path"
  * @returns Parsed volume information
  * @throws Error if the format is invalid
