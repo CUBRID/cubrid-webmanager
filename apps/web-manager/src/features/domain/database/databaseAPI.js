@@ -161,4 +161,17 @@ export const unloadDBAPI = async (host, payload) => {
   return { result: data, success: true };
 }
 
+export const getUnloadDBAPI = async (host) => {
+  const url = `/${host.uid}/database/unload-info`
+  const {data} = await axios.get(url);
 
+  return { result: data, success: true };
+}
+
+export const loadDBAPI = async (host, payload) => {
+  const {dbname, ...res} = payload
+  const url = `/${host.uid}/database/load/${dbname}`
+  const {data} = await axios.post(url, res);
+
+  return { result: data, success: true };
+}

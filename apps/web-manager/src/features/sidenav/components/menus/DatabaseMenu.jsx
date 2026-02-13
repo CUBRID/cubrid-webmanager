@@ -14,6 +14,7 @@ import {
   setRenameDB,
   setBackupDB, setCopyDB, setRestoreDB, setUnloadDB
 } from '@/features/sidenav/sideNavSlice.js';
+import { setLoadDB } from '../../sideNavSlice';
 
 const DatabaseMenu = ({ node, clientX, clientY, open, onClose }) => {
   const { startDatabase, stopDatabase } = useDatabaseOperation();
@@ -50,7 +51,10 @@ const DatabaseMenu = ({ node, clientX, clientY, open, onClose }) => {
         {
           label: 'Database Load',
           key: nanoid(4),
-          disabled: true,
+          disabled: node.status === 'active',
+          onClick: ()=>{
+            dispatch(setLoadDB({open: true, node}))
+          }
         },
         // {
         //     label: "Database Optimize",
