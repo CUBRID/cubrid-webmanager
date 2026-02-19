@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { setQueryPlanModal } from '@/features/sidenav/sideNavSlice.js';
+import { setAutoQueryLog } from '../../sideNavSlice';
 
 const QueryMenu = ({ node, clientX, clientY, open, onClose }) => {
   console.log(clientX, clientY);
@@ -24,6 +25,9 @@ const QueryMenu = ({ node, clientX, clientY, open, onClose }) => {
       label: 'Auto Query Log',
       key: nanoid(4),
       icon: <PlusOutlined />,
+      onClick: () => {
+        dispatch(setAutoQueryLog({ open: true, node}));
+      }
     },
     {
       label: 'Refresh',

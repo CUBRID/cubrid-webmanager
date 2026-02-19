@@ -50,3 +50,12 @@ export const getLoadAccessLogAPI = async (host) => {
   const response = await getResponse(host, payload);
   return { result: response, success: true };
 };
+
+export const getAutoExecQueryErrLog = async (host) => {
+  const payload = {
+    task: 'getautoexecqueryerrlog',
+  };
+
+  const response = await getResponse(host, payload);
+  return { result: response, success: true };
+};
