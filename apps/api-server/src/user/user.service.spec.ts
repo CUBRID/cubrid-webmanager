@@ -2,14 +2,33 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
 import { UserRepositoryService } from '@repository';
 import { PasswordService } from '@security';
+import { UserError } from '@error/user/user-error';
+import {
+  ChangePasswordRequest,
+  DeleteUserRequest,
+  UpdateUserInfoRequest,
+} from '@api-interfaces';
+import { User, UpdateUserDto, UserPreferenceDto } from '@type/index';
+import * as util from '@util';
 
 describe('UserService', () => {
   let service: UserService;
   let repository: jest.Mocked<UserRepositoryService>;
   let passwordService: jest.Mocked<PasswordService>;
 
+  const mockUser: User = {
+    uuid: 'user-123',
+    id: 'testuser',
+    password: 'hashed-password',
+    department: 'IT',
+    host_list: [],
+    user_preference: {
+      dashboardInterval: 10,
+      brokerStatusInterval: 20,
+    },
+  };
+
   beforeEach(async () => {
-    // TODO: Create mock objects and set up TestingModule
     const mockRepository = {
       loadUserById: jest.fn(),
       atomicUpdateUser: jest.fn(),
@@ -28,7 +47,6 @@ describe('UserService', () => {
           provide: UserRepositoryService,
           useValue: mockRepository,
         },
-
         {
           provide: PasswordService,
           useValue: mockPasswordService,
@@ -36,10 +54,373 @@ describe('UserService', () => {
       ],
     }).compile();
 
-    ((service = module.get<UserService>(UserService)),
-      (repository = module.get(UserRepositoryService)),
-      (passwordService = module.get(PasswordService)));
+    service = module.get<UserService>(UserService);
+    repository = module.get(UserRepositoryService);
+    passwordService = module.get(PasswordService);
   });
 
-  // TODO: Write test cases
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('changePassword', () => {
+    const mockUserId = 'user-123';
+    const mockRequest: ChangePasswordRequest = {
+      oldPassword: 'old-password',
+      newPassword: 'new-password',
+    };
+
+    it('should successfully change password when old password is correct', async () => {
+      const updatedUser = { ...mockUser, password: 'new-hashed-password' };
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        const result = await callback(mockUser);
+        return result;
+      });
+      passwordService.comparePlainAndHash.mockResolvedValue(true);
+      passwordService.getHashedValue.mockResolvedValue('new-hashed-password');
+
+      await service.changePassword(mockUserId, mockRequest);
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(Function)
+      );
+      expect(passwordService.comparePlainAndHash).toHaveBeenCalledWith(
+        'old-password',
+        'hashed-password'
+      );
+      expect(passwordService.getHashedValue).toHaveBeenCalledWith('new-password');
+    });
+
+    it('should throw UserError when old password is incorrect', async () => {
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        passwordService.comparePlainAndHash.mockResolvedValue(false);
+        await callback(mockUser);
+      });
+      passwordService.comparePlainAndHash.mockResolvedValue(false);
+
+      await expect(service.changePassword(mockUserId, mockRequest)).rejects.toThrow(
+        UserError.OldPasswordMismatch
+      );
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+      expect(passwordService.comparePlainAndHash).toHaveBeenCalledWith(
+        'old-password',
+        'hashed-password'
+      );
+      expect(passwordService.getHashedValue).not.toHaveBeenCalled();
+    });
+
+    it('should throw UserError when new password is invalid', async () => {
+      // Mock passwordValidityChecker to return false
+      const passwordValidityCheckerSpy = jest
+        .spyOn(util, 'passwordValidityChecker')
+        .mockReturnValue(false);
+
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        passwordService.comparePlainAndHash.mockResolvedValue(true);
+        await callback(mockUser);
+      });
+      passwordService.comparePlainAndHash.mockResolvedValue(true);
+
+      await expect(service.changePassword(mockUserId, mockRequest)).rejects.toThrow(
+        UserError.BadNewPassword
+      );
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+      expect(passwordService.comparePlainAndHash).toHaveBeenCalled();
+      expect(passwordService.getHashedValue).not.toHaveBeenCalled();
+      expect(passwordValidityCheckerSpy).toHaveBeenCalledWith('new-password');
+
+      passwordValidityCheckerSpy.mockRestore();
+    });
+
+    it('should throw UserError when user is not found', async () => {
+      repository.atomicUpdateUser.mockRejectedValue(
+        UserError.UserNotFound({ userId: mockUserId })
+      );
+
+      await expect(service.changePassword(mockUserId, mockRequest)).rejects.toThrow(
+        UserError.UserNotFound
+      );
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+    });
+  });
+
+  describe('getUserData', () => {
+    const mockUserId = 'user-123';
+
+    it('should return user data without password', async () => {
+      repository.loadUserById.mockResolvedValue(mockUser);
+
+      const result = await service.getUserData(mockUserId);
+
+      expect(repository.loadUserById).toHaveBeenCalledWith(mockUserId);
+      expect(result).not.toHaveProperty('password');
+      expect(result.uuid).toBe(mockUser.uuid);
+      expect(result.id).toBe(mockUser.id);
+      expect(result.department).toBe(mockUser.department);
+    });
+
+    it('should throw UserError when user is not found', async () => {
+      repository.loadUserById.mockRejectedValue(
+        UserError.UserNotFound({ userId: mockUserId })
+      );
+
+      await expect(service.getUserData(mockUserId)).rejects.toThrow(UserError.UserNotFound);
+
+      expect(repository.loadUserById).toHaveBeenCalledWith(mockUserId);
+    });
+  });
+
+  describe('getUserPreferences', () => {
+    const mockUserId = 'user-123';
+
+    it('should return user preferences', async () => {
+      repository.loadUserById.mockResolvedValue(mockUser);
+
+      const result = await service.getUserPreferences(mockUserId);
+
+      expect(repository.loadUserById).toHaveBeenCalledWith(mockUserId);
+      expect(result).toEqual(mockUser.user_preference);
+      expect(result.dashboardInterval).toBe(10);
+      expect(result.brokerStatusInterval).toBe(20);
+    });
+
+    it('should throw UserError when user is not found', async () => {
+      repository.loadUserById.mockRejectedValue(
+        UserError.UserNotFound({ userId: mockUserId })
+      );
+
+      await expect(service.getUserPreferences(mockUserId)).rejects.toThrow(
+        UserError.UserNotFound
+      );
+
+      expect(repository.loadUserById).toHaveBeenCalledWith(mockUserId);
+    });
+  });
+
+  describe('updateProfile', () => {
+    const mockUserId = 'user-123';
+    const mockUpdate: UpdateUserDto = {
+      department: 'Engineering',
+      user_preference: {
+        dashboardInterval: 30,
+      },
+    };
+
+    it('should successfully update user profile with department', async () => {
+      const updatedUser = { ...mockUser, department: 'Engineering' };
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        const result = await callback(mockUser);
+        return result;
+      });
+
+      const result = await service.updateProfile(mockUserId, { department: 'Engineering' });
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(Function)
+      );
+      expect(result.department).toBe('Engineering');
+    });
+
+    it('should successfully update user profile with user_preference', async () => {
+      const updatedUser = {
+        ...mockUser,
+        user_preference: {
+          ...mockUser.user_preference,
+          dashboardInterval: 30,
+        },
+      };
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        const result = await callback(mockUser);
+        return result;
+      });
+
+      const result = await service.updateProfile(mockUserId, {
+        user_preference: { dashboardInterval: 30 },
+      });
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(Function)
+      );
+      expect(result.user_preference.dashboardInterval).toBe(30);
+      expect(result.user_preference.brokerStatusInterval).toBe(20); // Should preserve existing
+    });
+
+    it('should successfully update user profile with both department and user_preference', async () => {
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        const result = await callback(mockUser);
+        return result;
+      });
+
+      const result = await service.updateProfile(mockUserId, mockUpdate);
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(Function)
+      );
+      expect(result.department).toBe('Engineering');
+      expect(result.user_preference.dashboardInterval).toBe(30);
+    });
+
+    it('should throw UserError when user is not found', async () => {
+      repository.atomicUpdateUser.mockRejectedValue(
+        UserError.UserNotFound({ userId: mockUserId })
+      );
+
+      await expect(service.updateProfile(mockUserId, mockUpdate)).rejects.toThrow(
+        UserError.UserNotFound
+      );
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateUserPreferences', () => {
+    const mockUserId = 'user-123';
+    const mockUpdate: UserPreferenceDto = {
+      dashboardInterval: 30,
+    };
+
+    it('should successfully update user preferences', async () => {
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        const result = await callback(mockUser);
+        return result;
+      });
+
+      const result = await service.updateUserPreferences(mockUserId, mockUpdate);
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(Function)
+      );
+      expect(result.user_preference.dashboardInterval).toBe(30);
+      expect(result.user_preference.brokerStatusInterval).toBe(20); // Should preserve existing
+    });
+
+    it('should successfully update multiple preference fields', async () => {
+      const multiUpdate: UserPreferenceDto = {
+        dashboardInterval: 30,
+        brokerStatusInterval: 40,
+      };
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        const result = await callback(mockUser);
+        return result;
+      });
+
+      const result = await service.updateUserPreferences(mockUserId, multiUpdate);
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(Function)
+      );
+      expect(result.user_preference.dashboardInterval).toBe(30);
+      expect(result.user_preference.brokerStatusInterval).toBe(40);
+    });
+
+    it('should throw UserError when user is not found', async () => {
+      repository.atomicUpdateUser.mockRejectedValue(
+        UserError.UserNotFound({ userId: mockUserId })
+      );
+
+      await expect(service.updateUserPreferences(mockUserId, mockUpdate)).rejects.toThrow(
+        UserError.UserNotFound
+      );
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateUser', () => {
+    const mockUserId = 'user-123';
+    const mockUpdate: UpdateUserInfoRequest = {
+      department: 'Engineering',
+    };
+
+    it('should successfully update user information', async () => {
+      repository.atomicUpdateUser.mockImplementation(async (userId, callback) => {
+        const result = await callback(mockUser);
+        return result;
+      });
+
+      const result = await service.updateUser(mockUserId, mockUpdate);
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(Function)
+      );
+      expect(result.department).toBe('Engineering');
+    });
+
+    it('should throw UserError when user is not found', async () => {
+      repository.atomicUpdateUser.mockRejectedValue(
+        UserError.UserNotFound({ userId: mockUserId })
+      );
+
+      await expect(service.updateUser(mockUserId, mockUpdate)).rejects.toThrow(
+        UserError.UserNotFound
+      );
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteUser', () => {
+    const mockUserId = 'user-123';
+
+    it('should successfully delete user when password is correct', async () => {
+      repository.loadUserById.mockResolvedValue(mockUser);
+      passwordService.comparePlainAndHash.mockResolvedValue(true);
+      repository.deleteUser.mockResolvedValue(undefined);
+
+      const request: DeleteUserRequest = { password: 'correct-password' };
+
+      await service.deleteUser(mockUserId, request);
+
+      expect(repository.loadUserById).toHaveBeenCalledWith(mockUserId);
+      expect(passwordService.comparePlainAndHash).toHaveBeenCalledWith(
+        'correct-password',
+        'hashed-password'
+      );
+      expect(repository.deleteUser).toHaveBeenCalledWith(mockUserId);
+    });
+
+    it('should throw UserError when password is incorrect', async () => {
+      repository.loadUserById.mockResolvedValue(mockUser);
+      passwordService.comparePlainAndHash.mockResolvedValue(false);
+
+      const request: DeleteUserRequest = { password: 'wrong-password' };
+
+      await expect(service.deleteUser(mockUserId, request)).rejects.toThrow(UserError);
+
+      expect(repository.loadUserById).toHaveBeenCalledWith(mockUserId);
+      expect(passwordService.comparePlainAndHash).toHaveBeenCalledWith(
+        'wrong-password',
+        'hashed-password'
+      );
+      expect(repository.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it('should throw UserError when user is not found', async () => {
+      repository.loadUserById.mockRejectedValue(
+        UserError.UserNotFound({ userId: mockUserId })
+      );
+
+      const request: DeleteUserRequest = { password: 'any-password' };
+
+      await expect(service.deleteUser(mockUserId, request)).rejects.toThrow(UserError);
+
+      expect(repository.loadUserById).toHaveBeenCalledWith(mockUserId);
+      expect(passwordService.comparePlainAndHash).not.toHaveBeenCalled();
+      expect(repository.deleteUser).not.toHaveBeenCalled();
+    });
+  });
 });

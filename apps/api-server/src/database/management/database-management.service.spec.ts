@@ -10,12 +10,14 @@ import {
   LoadDatabaseRequest,
   CheckDatabaseRequest,
   CompactDatabaseRequest,
+  RenameDatabaseRequest,
 } from '@api-interfaces';
 import {
   UnloadDatabaseCmsResponse,
   LoadDatabaseCmsResponse,
   CheckDatabaseCmsResponse,
   CompactDatabaseCmsResponse,
+  RenameDatabaseCmsResponse,
 } from '@type/cms-response';
 import * as common from '@common';
 
@@ -872,6 +874,347 @@ describe('DatabaseManagementService', () => {
 
       await expect(
         service.compactDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+  });
+
+  describe('renameDatabase', () => {
+    const mockSuccessResponse: RenameDatabaseCmsResponse = {
+      __EXEC_TIME: '482 ms',
+      note: 'none',
+      status: 'success',
+      task: 'renamedb',
+    };
+
+    const mockClientVolumeMapping = [
+      { oldPath: '/old/path1', newPath: '/new/path1' },
+      { oldPath: '/old/path2', newPath: '/new/path2' },
+    ];
+
+    const expectedCmsVolumeMapping = [
+      {
+        '/old/path1': '/new/path1',
+        '/old/path2': '/new/path2',
+      },
+    ];
+
+    it('should successfully rename database with advanced "on" and volume', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: RenameDatabaseRequest = {
+        rename: 'renamed_db',
+        exvolpath: 'none',
+        advanced: 'on',
+        volume: mockClientVolumeMapping,
+        forcedel: 'n',
+      };
+
+      const result = await service.renameDatabase(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      expect(hostService.findHostInternal).toHaveBeenCalledWith(mockUserId, mockHostUid);
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        `https://${mockHost.address}:${mockHost.port}/cm_api`,
+        {
+          task: 'renamedb',
+          token: mockHost.token,
+          dbname: mockDbname,
+          rename: 'renamed_db',
+          exvolpath: 'none',
+          advanced: 'on',
+          volume: expectedCmsVolumeMapping,
+          forcedel: 'n',
+        }
+      );
+      expect(common.checkCmsTokenError).toHaveBeenCalledWith(mockSuccessResponse);
+      expect(common.checkCmsStatusError).toHaveBeenCalledWith(mockSuccessResponse);
+      expect(result).toEqual({});
+    });
+
+    it('should successfully rename database with advanced "off" without volume', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: RenameDatabaseRequest = {
+        rename: 'renamed_db',
+        exvolpath: 'none',
+        advanced: 'off',
+        forcedel: 'n',
+      };
+
+      const result = await service.renameDatabase(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          advanced: 'off',
+          forcedel: 'n',
+        })
+      );
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.not.objectContaining({
+          volume: expect.anything(),
+        })
+      );
+      expect(result).toEqual({});
+    });
+
+    it('should not include volume in CMS request when advanced is "off" even if volume is provided', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: RenameDatabaseRequest = {
+        rename: 'renamed_db',
+        exvolpath: 'none',
+        advanced: 'off',
+        volume: mockClientVolumeMapping, // volume provided but advanced is 'off'
+        forcedel: 'n',
+      };
+
+      const result = await service.renameDatabase(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      // Volume should not be included when advanced is 'off'
+      const callArgs = cmsClient.postAuthenticated.mock.calls[0][1] as any;
+      expect(callArgs.volume).toBeUndefined();
+      expect(result).toEqual({});
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+      const request: RenameDatabaseRequest = {
+        rename: 'renamed_db',
+        exvolpath: 'none',
+        advanced: 'off',
+        forcedel: 'n',
+      };
+
+      await expect(
+        service.renameDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(HostError);
+    });
+
+    it('should throw CmsError if CMS request fails', async () => {
+      cmsClient.postAuthenticated.mockRejectedValue(
+        CmsError.RequestFailed({ message: 'CMS request failed' })
+      );
+      const request: RenameDatabaseRequest = {
+        rename: 'renamed_db',
+        exvolpath: 'none',
+        advanced: 'off',
+        forcedel: 'n',
+      };
+
+      await expect(
+        service.renameDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(CmsError);
+    });
+
+    it('should throw DatabaseError if CMS token error occurs', async () => {
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: RenameDatabaseRequest = {
+        rename: 'renamed_db',
+        exvolpath: 'none',
+        advanced: 'off',
+        forcedel: 'n',
+      };
+
+      await expect(
+        service.renameDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: RenameDatabaseRequest = {
+        rename: 'renamed_db',
+        exvolpath: 'none',
+        advanced: 'off',
+        forcedel: 'n',
+      };
+
+      await expect(
+        service.renameDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+  });
+
+  describe('getAddVolStatus', () => {
+    const mockSuccessResponse = {
+      __EXEC_TIME: '0 ms',
+      freespace: '2227464',
+      note: 'none',
+      status: 'success',
+      task: 'getaddvolstatus',
+      volpath: '/home/cubrid/CUBRID-11.4.4.1832-7f8f019-Linux.x86_64/databases/test',
+    };
+
+    it('should successfully get add vol status', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      const result = await service.getAddVolStatus(mockUserId, mockHostUid, mockDbname);
+
+      expect(hostService.findHostInternal).toHaveBeenCalledWith(mockUserId, mockHostUid);
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        `https://${mockHost.address}:${mockHost.port}/cm_api`,
+        {
+          task: 'getaddvolstatus',
+          token: mockHost.token,
+          dbname: mockDbname,
+        }
+      );
+      expect(common.checkCmsTokenError).toHaveBeenCalledWith(mockSuccessResponse);
+      expect(common.checkCmsStatusError).toHaveBeenCalledWith(mockSuccessResponse);
+      expect(result).toEqual({
+        freespace: '2227464',
+        volpath: '/home/cubrid/CUBRID-11.4.4.1832-7f8f019-Linux.x86_64/databases/test',
+      });
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+
+      await expect(service.getAddVolStatus(mockUserId, mockHostUid, mockDbname)).rejects.toThrow(
+        HostError
+      );
+    });
+
+    it('should throw CmsError if CMS request fails', async () => {
+      cmsClient.postAuthenticated.mockRejectedValue(
+        CmsError.RequestFailed({ message: 'CMS request failed' })
+      );
+
+      await expect(service.getAddVolStatus(mockUserId, mockHostUid, mockDbname)).rejects.toThrow(
+        CmsError
+      );
+    });
+
+    it('should throw DatabaseError if CMS token error occurs', async () => {
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      await expect(service.getAddVolStatus(mockUserId, mockHostUid, mockDbname)).rejects.toThrow(
+        DatabaseError
+      );
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      await expect(service.getAddVolStatus(mockUserId, mockHostUid, mockDbname)).rejects.toThrow(
+        DatabaseError
+      );
+    });
+  });
+
+  describe('addVolDb', () => {
+    const mockRequest = {
+      volname: '',
+      purpose: 'generic',
+      path: '/home/cubrid/CUBRID-11.4.4.1832-7f8f019-Linux.x86_64/databases/test',
+      numberofpages: '32768',
+      size_need_mb: '512.000(MB)',
+    };
+
+    const mockSuccessResponse = {
+      __EXEC_TIME: '3345 ms',
+      dbname: 'test',
+      note: 'none',
+      purpose: 'generic',
+      status: 'success',
+      task: 'addvoldb',
+    };
+
+    it('should successfully add volume to database', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      const result = await service.addVolDb(mockUserId, mockHostUid, mockDbname, mockRequest);
+
+      expect(hostService.findHostInternal).toHaveBeenCalledWith(mockUserId, mockHostUid);
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        `https://${mockHost.address}:${mockHost.port}/cm_api`,
+        {
+          task: 'addvoldb',
+          token: mockHost.token,
+          dbname: mockDbname,
+          volname: mockRequest.volname,
+          purpose: mockRequest.purpose,
+          path: mockRequest.path,
+          numberofpages: mockRequest.numberofpages,
+          size_need_mb: mockRequest.size_need_mb,
+        }
+      );
+      expect(common.checkCmsTokenError).toHaveBeenCalledWith(mockSuccessResponse);
+      expect(common.checkCmsStatusError).toHaveBeenCalledWith(mockSuccessResponse);
+      expect(result).toEqual({
+        dbname: 'test',
+        purpose: 'generic',
+      });
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+
+      await expect(
+        service.addVolDb(mockUserId, mockHostUid, mockDbname, mockRequest)
+      ).rejects.toThrow(HostError);
+    });
+
+    it('should throw CmsError if CMS request fails', async () => {
+      cmsClient.postAuthenticated.mockRejectedValue(
+        CmsError.RequestFailed({ message: 'CMS request failed' })
+      );
+
+      await expect(
+        service.addVolDb(mockUserId, mockHostUid, mockDbname, mockRequest)
+      ).rejects.toThrow(CmsError);
+    });
+
+    it('should throw DatabaseError if CMS token error occurs', async () => {
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      await expect(
+        service.addVolDb(mockUserId, mockHostUid, mockDbname, mockRequest)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      await expect(
+        service.addVolDb(mockUserId, mockHostUid, mockDbname, mockRequest)
       ).rejects.toThrow(DatabaseError);
     });
   });

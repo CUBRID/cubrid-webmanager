@@ -44,3 +44,6 @@ export * from './optimize-database-response';
 export * from './classinfo-response';
 export * from './check-database-response';
 export * from './compact-database-response';
+export * from './rename-database-response';
+export * from './get-add-vol-status-response';
+export * from './add-vol-db-response';

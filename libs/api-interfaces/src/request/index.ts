@@ -2,6 +2,7 @@
 export * from './add-host-request';
 export * from './add-db-request';
 export * from './change-password-request';
+export * from './delete-user-request';
 export * from './update-host-request';
 export * from './host-uid-request';
 export * from './update-db-request';
@@ -41,3 +42,6 @@ export * from './optimize-database-request';
 export * from './classinfo-request';
 export * from './check-database-request';
 export * from './compact-database-request';
+export * from './rename-database-request';
+export * from './get-add-vol-status-request';
+export * from './add-vol-db-request';
