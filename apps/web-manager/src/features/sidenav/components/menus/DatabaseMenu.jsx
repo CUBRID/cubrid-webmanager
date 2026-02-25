@@ -4,7 +4,6 @@ import { nanoid } from 'nanoid';
 import { useDispatch } from 'react-redux';
 import React from 'react';
 import { setBuffering } from '@/shared/slice/globalSlice.js';
-import useDatabaseOperation from '@/features/sidenav/hook/useDatabaseOperation.js';
 import {
   setCheckDB,
   setCompactDB,
@@ -16,6 +15,7 @@ import {
 } from '@/features/sidenav/sideNavSlice.js';
 import { setLockInformation } from '../../sideNavSlice';
 import { setLoadDB } from '../../sideNavSlice';
+import useDatabaseOperation from '../../../domain/database/hook/useDatabaseOperation';
 
 const DatabaseMenu = ({ node, clientX, clientY, open, onClose }) => {
   const { startDatabase, stopDatabase } = useDatabaseOperation();

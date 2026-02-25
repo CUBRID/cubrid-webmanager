@@ -1,6 +1,8 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { setBrokers } from '@/features/domain/broker/brokerSlice.js';
 import { startBrokerAPI, stopBrokerAPI } from '@/features/domain/broker/brokerAPI.js';
+import { getBrokerFormat } from '../../../../lib/treeFormat';
+import { startAllBrokerAPI, stopAllBrokerAPI } from '../brokerAPI';
 
 const useBrokerOperation = () => {
   const { activeHost } = useSelector((state) => state.host);
@@ -40,7 +42,34 @@ const useBrokerOperation = () => {
     }
   };
 
-  return { startBroker, stopBroker };
+  const startAllBroker = async () => {
+    const response = await startAllBrokerAPI(activeHost);
+    if (response.success) {
+      const newBrokers = brokers.map((item) => {
+        return {
+          ...item,
+          state: 'ON',
+          icon: 'fa-folder-gear active__icon',
+        };
+      });
+      dispatch(setBrokers(newBrokers));
+    }
+  };
+  const stopAllBroker = async () => {
+    const response = await stopAllBrokerAPI(activeHost);
+    if (response.success) {
+      const newBrokers = brokers.map((item) => {
+        return {
+          ...item,
+          state: 'OFF',
+          icon: 'fa-folder-gear inactive__icon',
+        };
+      });
+      dispatch(setBrokers(newBrokers));
+    }
+  };
+
+  return { startBroker, stopBroker, startAllBroker, stopAllBroker };
 };
 
 export default useBrokerOperation;

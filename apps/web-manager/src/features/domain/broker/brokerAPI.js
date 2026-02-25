@@ -24,3 +24,18 @@ export const stopBrokerAPI = async (host, broker) => {
   const response = await axios.post(url);
   return { result: response.data, success: true };
 };
+
+export const startAllBrokerAPI = async (host) => {
+  const payload = {
+    task: 'startbroker',
+  };
+  const response = await getResponse(host, payload);
+  return { result: response, success: true };
+};
+export const stopAllBrokerAPI = async (host) => {
+  const payload = {
+    task: 'stopbroker',
+  };
+  const response = await getResponse(host, payload);
+  return { result: response, success: true };
+};
