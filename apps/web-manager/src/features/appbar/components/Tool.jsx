@@ -77,14 +77,21 @@ const Tool = () => {
       const param = extractParam(response.result);
       // Use optional chaining and default to empty string to prevent crashes
       const serviceConfig = param?.[0]?.['service']["service"] || '';
+      const serverConfig = param?.[0]?.['service']['server'] || '';
       const hasServer = serviceConfig.includes('server');
       const hasBroker = serviceConfig.includes('broker');
 
       if (isStarting) {
         // START LOGIC: DBs first, then Brokers
         if (hasServer) {
+
           const dbsToStart = databases
-            .filter((db) => db.status !== 'active')
+            .filter((db) => {
+              if(serverConfig){
+                const status = db.status !== 'active';
+                return serverConfig.includes(db.dbname) && status
+              }
+            })
             .map((db) => startDatabase(db));
           await Promise.all(dbsToStart);
         }
