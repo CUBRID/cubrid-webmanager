@@ -12,6 +12,7 @@ import {
   CompactDatabaseRequest,
   RenameDatabaseRequest,
   LockDatabaseRequest,
+  GetTransactionInfoRequest,
 } from '@api-interfaces';
 import {
   UnloadDatabaseCmsResponse,
@@ -20,6 +21,7 @@ import {
   CompactDatabaseCmsResponse,
   RenameDatabaseCmsResponse,
   LockDatabaseCmsResponse,
+  GetTransactionInfoCmsResponse,
 } from '@type/cms-response';
 import * as common from '@common';
 
@@ -1483,6 +1485,137 @@ describe('DatabaseManagementService', () => {
 
       await expect(
         service.lockDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+  });
+
+  describe('getTransactionInfo', () => {
+    const mockSuccessResponse: GetTransactionInfoCmsResponse = {
+      __EXEC_TIME: '56 ms',
+      dbname: 'demodb',
+      note: 'none',
+      status: 'success',
+      task: 'gettransactioninfo',
+      transactioninfo: [
+        {
+          transaction: [
+            {
+              '@user': 'DBA',
+              SQL_ID: 'empty',
+              host: 'lgj1089-3-60',
+              pid: '1684512',
+              program: 'query_editor_cub_cas_1',
+              query_time: '0.00',
+              tran_time: '0.00',
+              tranindex: '2(ACTIVE)',
+              wait_for_lock_holder: '-1',
+            },
+          ],
+        },
+      ],
+    };
+
+    it('should successfully get transaction information', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: GetTransactionInfoRequest = {
+        dbuser: 'dba',
+        dbpasswd: '',
+      };
+
+      const result = await service.getTransactionInfo(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'gettransactioninfo',
+          token: mockHost.token,
+          dbname: mockDbname,
+          dbuser: 'dba',
+          dbpasswd: '',
+        })
+      );
+      expect(result).toEqual({
+        dbname: 'demodb',
+        transactioninfo: [
+          {
+            transaction: [
+              {
+                '@user': 'DBA',
+                SQL_ID: 'empty',
+                host: 'lgj1089-3-60',
+                pid: '1684512',
+                program: 'query_editor_cub_cas_1',
+                query_time: '0.00',
+                tran_time: '0.00',
+                tranindex: '2(ACTIVE)',
+                wait_for_lock_holder: '-1',
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+      const request: GetTransactionInfoRequest = {
+        dbuser: 'dba',
+        dbpasswd: '',
+      };
+
+      await expect(
+        service.getTransactionInfo(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(HostError);
+    });
+
+    it('should throw CmsError if CMS request fails', async () => {
+      cmsClient.postAuthenticated.mockRejectedValue(
+        CmsError.RequestFailed({ message: 'CMS request failed' })
+      );
+      const request: GetTransactionInfoRequest = {
+        dbuser: 'dba',
+        dbpasswd: '',
+      };
+
+      await expect(
+        service.getTransactionInfo(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(CmsError);
+    });
+
+    it('should throw DatabaseError if CMS token error occurs', async () => {
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: GetTransactionInfoRequest = {
+        dbuser: 'dba',
+        dbpasswd: '',
+      };
+
+      await expect(
+        service.getTransactionInfo(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: GetTransactionInfoRequest = {
+        dbuser: 'dba',
+        dbpasswd: '',
+      };
+
+      await expect(
+        service.getTransactionInfo(mockUserId, mockHostUid, mockDbname, request)
       ).rejects.toThrow(DatabaseError);
     });
   });

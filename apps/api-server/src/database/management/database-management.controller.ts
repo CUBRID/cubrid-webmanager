@@ -11,6 +11,8 @@ import {
   LoadDatabaseResponse,
   LockDatabaseRequest,
   LockDatabaseResponse,
+  GetTransactionInfoRequest,
+  GetTransactionInfoResponse,
   OptimizeDatabaseRequest,
   OptimizeDatabaseResponse,
   RenameDatabaseRequest,
@@ -360,5 +362,37 @@ export class DatabaseManagementController {
       'DatabaseManagementController'
     );
     return await this.managementService.lockDatabase(userId, hostUid, dbname, body);
+  }
+
+  /**
+   * Get transaction information for a database.
+   * Returns domain-only data (CMS envelope removed).
+   *
+   * @route POST /:hostUid/database/transaction-info/:dbname
+   * @param req Express request (contains authenticated user)
+   * @param hostUid Host unique identifier from path parameter
+   * @param dbname Database name from path parameter
+   * @param body Request body containing dbuser and dbpasswd
+   * @returns GetTransactionInfoResponse Transaction information
+   * @example
+   * // POST /host-uid/database/transaction-info/demodb
+   * // Body: { "dbuser": "dba", "dbpasswd": "" }
+   */
+  @Post('transaction-info/:dbname')
+  async getTransactionInfo(
+    @Request() req,
+    @Param('hostUid') hostUid: string,
+    @Param('dbname') dbname: string,
+    @Body() body: GetTransactionInfoRequest
+  ): Promise<GetTransactionInfoResponse> {
+    const userId = req.user.sub;
+
+    validateRequiredFields(body, ['dbuser', 'dbpasswd'], 'database/transaction-info', this.logger);
+
+    Logger.log(
+      `Getting transaction information for database: ${dbname} on host: ${hostUid}`,
+      'DatabaseManagementController'
+    );
+    return await this.managementService.getTransactionInfo(userId, hostUid, dbname, body);
   }
 }

@@ -10,6 +10,8 @@ import {
   LoadDatabaseResponse,
   LockDatabaseRequest,
   LockDatabaseResponse,
+  GetTransactionInfoRequest,
+  GetTransactionInfoResponse,
   OptimizeDatabaseRequest,
   OptimizeDatabaseResponse,
   RenameDatabaseRequest,
@@ -35,6 +37,7 @@ import {
   GetAddVolStatusCmsRequest,
   LoadDatabaseCmsRequest,
   LockDatabaseCmsRequest,
+  GetTransactionInfoCmsRequest,
   OptimizeDatabaseCmsRequest,
   RenameDatabaseCmsRequest,
   UnloadDatabaseCmsRequest,
@@ -47,6 +50,7 @@ import {
   GetAddVolStatusCmsResponse,
   LoadDatabaseCmsResponse,
   LockDatabaseCmsResponse,
+  GetTransactionInfoCmsResponse,
   OptimizeDatabaseCmsResponse,
   RenameDatabaseCmsResponse,
   UnloadDatabaseCmsResponse,
@@ -569,5 +573,48 @@ export class DatabaseManagementService {
     return {
       lockinfo: response.lockinfo,
     };
+  }
+
+  /**
+   * Get transaction information for a database.
+   * Returns domain-only data (CMS envelope removed).
+   *
+   * @param userId User ID from JWT
+   * @param hostUid Host UID
+   * @param dbname Database name
+   * @param request Client request containing dbuser and dbpasswd
+   * @returns GetTransactionInfoResponse Transaction information
+   * @throws DatabaseError If request fails or CMS status is fail
+   */
+  @HandleDatabaseErrors()
+  @HandleCmsStatusErrors()
+  async getTransactionInfo(
+    userId: string,
+    hostUid: string,
+    dbname: string,
+    request: GetTransactionInfoRequest
+  ): Promise<GetTransactionInfoResponse> {
+    const host = await this.hostService.findHostInternal(userId, hostUid);
+    const url = `https://${host.address}:${host.port}/cm_api`;
+
+    const cmsRequest: GetTransactionInfoCmsRequest = {
+      task: 'gettransactioninfo',
+      token: host.token || '',
+      dbname: dbname,
+      dbuser: request.dbuser,
+      dbpasswd: request.dbpasswd,
+    };
+
+    const response = await this.cmsClient.postAuthenticated<
+      GetTransactionInfoCmsRequest,
+      GetTransactionInfoCmsResponse
+    >(url, cmsRequest);
+
+    checkCmsTokenError(response);
+    checkCmsStatusError(response);
+
+    const { __EXEC_TIME, note, status, task, ...dataOnly } = response;
+
+    return dataOnly;
   }
 }
