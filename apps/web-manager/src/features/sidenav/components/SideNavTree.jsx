@@ -30,6 +30,7 @@ import UsersMenu from '@/features/sidenav/components/menus/UsersMenu.jsx';
 import ManageDBUser from '@/features/sidenav/components/modal/ManageDBUser.jsx';
 import UserMenu from '@/features/sidenav/components/menus/UserMenu.jsx';
 import DatabaseSpaceMenu from './menus/DatabaseSpaceMenu';
+import { setSelectedObject } from '../../../shared/slice/globalSlice';
 
 const menus = [
   { type: 'backup', Screen: BackupMenu },
@@ -114,7 +115,7 @@ const SideNavTree = () => {
               {
                 key: nanoid(4),
                 parentId: dbFormat.key,
-                databaseId: dbFormat.key,
+                databaseId: dbFormat.databaseId,
                 title: 'Users',
                 icon: 'fa-users',
                 type: 'users',
@@ -123,6 +124,7 @@ const SideNavTree = () => {
               {
                 key: nanoid(4),
                 parentId: dbFormat.key,
+                databaseId: dbFormat.databaseId,
                 title: 'Job Automation',
                 icon: 'fa-folder folder__icon',
                 type: 'job_automation',
@@ -130,6 +132,7 @@ const SideNavTree = () => {
               {
                 key: nanoid(4),
                 parentId: dbFormat.key,
+                databaseId: dbFormat.databaseId,
                 title: 'Database Space',
                 icon: 'fa-folder folder__icon',
                 type: 'database_space',
@@ -200,6 +203,14 @@ const SideNavTree = () => {
     }
   };
 
+  const onSelected = (key, {node}) => {
+    if(key.length > 0) {
+      dispatch(setSelectedObject({type: activeTree, node}));
+    }else{
+      dispatch(setSelectedObject(null));
+    }
+  }
+
   const onCloseModal = () => {
     setOpenDeleteConfirm({ open: false });
   };
@@ -242,7 +253,7 @@ const SideNavTree = () => {
         style={{ height: `calc(100vh - ${260 + hostHeight}px)` }}
       >
         <Tree
-          defaultExpandAll
+          onSelect={onSelected}
           showLine
           showIcon
           onRightClick={handleTreeRightClick}

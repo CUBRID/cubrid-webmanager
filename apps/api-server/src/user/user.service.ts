@@ -12,6 +12,7 @@ import {
 } from '@type/index';
 import {
   ChangePasswordRequest,
+  DeleteUserRequest,
   UpdateUserInfoRequest,
   UserResponse,
 } from '@api-interfaces';
@@ -111,22 +112,33 @@ export class UserService {
   }
 
   /**
-   * Permanently deletes a user account.
+   * Permanently deletes a user account after password verification.
    *
+   * Validates the provided password against the stored hash before deleting.
    * Removes the user and all associated data from the repository.
    * This operation cannot be undone.
    *
    * @param {string} userId - The unique identifier of the user to delete
+   * @param {DeleteUserRequest} request - Request containing password for verification
    * @returns {Promise<void>} No return value on success
-   * @throws {UserError} When user is not found
+   * @throws {UserError} When user is not found or password is incorrect
    * @example
    * ```typescript
-   * await userService.deleteUser("user123");
-   * // User account is permanently deleted
+   * await userService.deleteUser("user123", { password: "userpassword" });
+   * // User account is permanently deleted after password verification
    * ```
    */
   @HandleUserErrors()
-  async deleteUser(userId: string): Promise<void> {
+  async deleteUser(userId: string, request: DeleteUserRequest): Promise<void> {
+    // Load user to verify password
+    const user = await this.repository.loadUserById(userId);
+
+    // Verify password before deletion
+    if (!(await this.password.comparePlainAndHash(request.password, user.password))) {
+      throw UserError.OldPasswordMismatch();
+    }
+
+    // Password verified, proceed with deletion
     await this.repository.deleteUser(userId);
   }
 

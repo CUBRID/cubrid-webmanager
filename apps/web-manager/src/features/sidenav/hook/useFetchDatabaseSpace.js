@@ -35,6 +35,7 @@ const useFetchDatabaseSpace = (node) => {
       const database = databases.find((item) => item.key === node.parentId);
       const newSubDBSpaceFolder = titleSubDB.map((res) => {
         return {
+          databaseId: node.databaseId,
           parentId: node.key,
           title: res,
           key: nanoid(4),
@@ -46,12 +47,14 @@ const useFetchDatabaseSpace = (node) => {
         if (res.success) {
           const logFolder = [
             {
+              databaseId: newSubDBSpaceFolder[3].databaseId,
               title: 'active',
               key: nanoid(4),
               parentId: newSubDBSpaceFolder[3].key,
               icon: 'fa-folder folder__icon',
             },
             {
+              databaseId: newSubDBSpaceFolder[3].databaseId,
               title: 'archive',
               key: nanoid(4),
               parentId: newSubDBSpaceFolder[3].key,
@@ -69,6 +72,7 @@ const useFetchDatabaseSpace = (node) => {
             switch (item.type) {
               case 'PERMANENT': {
                 itemInfo.push({
+                  databaseId: newSubDBSpaceFolder[0].databaseId,
                   ...getFormatSpace(item),
                   ...editionProps,
                   parentId: newSubDBSpaceFolder[0].key,
@@ -77,6 +81,7 @@ const useFetchDatabaseSpace = (node) => {
               }
               case 'Active_log': {
                 itemInfo.push({
+                  databaseId: logFolder[0].databaseId,
                   ...getFormatSpace(item),
                   ...editionProps,
                   parentId: logFolder[0].key,
@@ -85,6 +90,7 @@ const useFetchDatabaseSpace = (node) => {
               }
               case 'Archive_log': {
                 itemInfo.push({
+                  databaseId: logFolder[1].databaseId,
                   ...getFormatSpace(item),
                   ...editionProps,
                   parentId: logFolder[1].key,

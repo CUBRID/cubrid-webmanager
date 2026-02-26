@@ -20,10 +20,12 @@ export const getHostFormat = (server) => {
 };
 
 export const getDatabaseFormat = (item) => {
+  const key = nanoid(4);
   return {
+    databaseId: key,
     isLogin: false,
     ...item,
-    key: nanoid(4),
+    key: key,
     title: item.dbname,
     type: 'database',
     icon: `fa-database ${item.status === 'inactive' ? 'inactive__icon' : 'active__icon'}`,
@@ -32,8 +34,10 @@ export const getDatabaseFormat = (item) => {
 };
 
 export const getBrokerFormat = (item) => {
+  const key = nanoid(4);
   return {
-    key: nanoid(4),
+    brokerId: key,
+    key,
     title: `${item.name} (${item.port})`,
     icon: `fa-folder-gear ${item.state === 'ON' ? 'active__icon' : 'inactive__icon'}`,
     ...item,

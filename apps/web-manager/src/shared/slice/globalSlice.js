@@ -6,6 +6,8 @@ const initialState = {
   buffering: false,
   deleteConfirm: { open: false },
   errorModal: { open: false },
+  successModal: { open: false },
+  selectedObject: null,
 };
 
 const globalSlice = createSlice({
@@ -24,9 +26,21 @@ const globalSlice = createSlice({
     setErrorModal: (state, action) => {
       state.errorModal = action.payload;
     },
+    setSuccessModal: (state, action) => {
+      state.successModal = action.payload;
+    },
+    setSelectedObject: (state, action) => {
+      state.selectedObject = action.payload;
+    }
   },
 });
 
-export const { setIntervalDashboard, setBuffering, setDeleteConfirm, setErrorModal } =
-  globalSlice.actions;
+export const {
+  setIntervalDashboard,
+  setBuffering,
+  setDeleteConfirm,
+  setErrorModal ,
+  setSuccessModal,
+  setSelectedObject,
+} = globalSlice.actions;
 export default globalSlice.reducer;

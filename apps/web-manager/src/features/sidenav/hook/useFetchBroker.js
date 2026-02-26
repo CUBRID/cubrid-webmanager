@@ -11,6 +11,7 @@ const useFetchBroker = (node) => {
     if (node.type === 'broker') {
       const tempSqlFolder = [
         {
+          brokerId: node.brokerId,
           parentId: node.key,
           key: nanoid(4),
           title: 'SQL Log',
@@ -23,6 +24,7 @@ const useFetchBroker = (node) => {
           .filter((item) => item.type === 'script')
           .map((item) => ({
             ...item,
+            brokerId: node.brokerId,
             parentId: tempSqlFolder[0].key,
             key: nanoid(4),
             title: item.path.split('/').pop(),

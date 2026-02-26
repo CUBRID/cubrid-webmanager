@@ -10,6 +10,7 @@ const ErrorModal = ({ title, content }) => {
 
   return (
     <Modal
+      zIndex={1100}
       title={errorModal.title}
       open={errorModal.open}
       footer={[

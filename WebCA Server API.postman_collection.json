@@ -636,6 +636,40 @@
 					"response": []
 				},
 				{
+					"name": "Get Auto Backup DB Err Log",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/{{hostUid}}/database/auto-backup-db-err-log",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{hostUid}}",
+								"database",
+								"auto-backup-db-err-log"
+							]
+						},
+						"description": "Get auto-backup database error log. Returns domain-only data (CMS envelope removed).\n\n**URI:**\n```\nPOST /:hostUid/database/auto-backup-db-err-log\n```\n**Example:**\n```\nPOST /host-uid-1/database/auto-backup-db-err-log\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\nContent-Type: application/json\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n\n**Request Body:**\n```json\n{}\n```\n\n**Note:** Request body is an empty object. No fields are required.\n\n**Success Response (200 OK) - With Errors:**\n```json\n{\n  \"error\": [\n    {\n      \"backupid\": \"test_backup\",\n      \"dbname\": \"demodb\",\n      \"error_desc\": \"backupdb(demodb): auto job start\",\n      \"error_time\": \"2026/01/24 15:18:00\"\n    },\n    {\n      \"backupid\": \"test_backup\",\n      \"dbname\": \"demodb\",\n      \"error_desc\": \"backupdb(demodb): success\",\n      \"error_time\": \"2026/01/24 15:18:00\"\n    }\n  ]\n}\n```\n\n**Success Response (200 OK) - No Errors:**\n```json\n{\n  \"error\": null\n}\n```\n\n**Response Field Descriptions:**\n- `error` - Array of error log entries (null if no errors)\n  - `backupid` - Backup ID\n  - `dbname` - Database name\n  - `error_desc` - Error description\n  - `error_time` - Error time\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Host not found\",\n  \"error\": \"Not Found\"\n}\n```\n\n**Error Response (500 Internal Server Error):**\n```json\n{\n  \"statusCode\": 500,\n  \"message\": \"Failed to get error log\",\n  \"error\": \"Internal Server Error\"\n}\n```"
+					},
+					"response": []
+				},
+				{
 					"name": "Set Auto Exec Query",
 					"request": {
 						"method": "POST",
@@ -683,6 +717,40 @@
 							]
 						},
 						"description": "Get auto-execution query for a database. Returns domain-only data (CMS envelope removed).\n\n**URI:**\n```\nGET /:hostUid/database/auto-exec-query/:dbname\n```\n**Example:**\n```\nGET /host-uid-1/database/auto-exec-query/demodb\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n- `dbname` - Database name\n\n**Success Response (200 OK):**\n```json\n{\n  \"planlist\": [\n    {\n      \"queryplan\": []\n    }\n  ]\n}\n```\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Database not found\",\n  \"error\": \"Not Found\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Auto Exec Query Err Log",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/{{hostUid}}/database/auto-exec-query-err-log",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{hostUid}}",
+								"database",
+								"auto-exec-query-err-log"
+							]
+						},
+						"description": "Get auto-execution query error log. Returns domain-only data (CMS envelope removed).\n\n**URI:**\n```\nPOST /:hostUid/database/auto-exec-query-err-log\n```\n**Example:**\n```\nPOST /host-uid-1/database/auto-exec-query-err-log\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\nContent-Type: application/json\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n\n**Request Body:**\n```json\n{}\n```\n\n**Note:** Request body is an empty object. No fields are required.\n\n**Success Response (200 OK) - With Errors:**\n```json\n{\n  \"error\": [\n    {\n      \"@username\": \"admin\",\n      \"dbname\": \"demodb\",\n      \"error_code\": \"0\",\n      \"error_desc\": \"start\",\n      \"error_time\": \"2026/01/24 15:10:00\",\n      \"query_id\": \"test_query\"\n    },\n    {\n      \"@username\": \"admin\",\n      \"dbname\": \"demodb\",\n      \"error_code\": \"0\",\n      \"error_desc\": \"success\",\n      \"error_time\": \"2026/01/24 15:10:00\",\n      \"query_id\": \"test_query\"\n    }\n  ]\n}\n```\n\n**Success Response (200 OK) - No Errors:**\n```json\n{\n  \"error\": null\n}\n```\n\n**Response Field Descriptions:**\n- `error` - Array of error log entries (null if no errors)\n  - `@username` - Username\n  - `dbname` - Database name\n  - `error_code` - Error code\n  - `error_desc` - Error description\n  - `error_time` - Error time\n  - `query_id` - Query ID\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Host not found\",\n  \"error\": \"Not Found\"\n}\n```\n\n**Error Response (500 Internal Server Error):**\n```json\n{\n  \"statusCode\": 500,\n  \"message\": \"Failed to get error log\",\n  \"error\": \"Internal Server Error\"\n}\n```"
 					},
 					"response": []
 				},
@@ -876,6 +944,76 @@
 							]
 						},
 						"description": "Check a database. Returns empty object on success.\n\n**URI:**\n```\nPOST /:hostUid/database/check/:dbname\n```\n**Example:**\n```\nPOST /host-uid-1/database/check/test\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\nContent-Type: application/json\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n- `dbname` - Database name\n\n**Request Body (Required Fields):**\n```json\n{\n  \"repairdb\": \"n\"\n}\n```\n\n**Request Body Field Descriptions:**\n- `repairdb` - Repair option (`y` = check and repair, `n` = check only)\n\n**Success Response (200 OK):**\n```json\n{}\n```\n\n**Error Response (400 Bad Request):**\n```json\n{\n  \"statusCode\": 400,\n  \"message\": \"Missing required fields: repairdb\",\n  \"error\": \"Bad Request\"\n}\n```\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Database not found\",\n  \"error\": \"Not Found\"\n}\n```\n\n**Error Response (500 Internal Server Error):**\n```json\n{\n  \"statusCode\": 500,\n  \"message\": \"Failed to check database\",\n  \"error\": \"Internal Server Error\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Lock Database",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/{{hostUid}}/database/lock/{{dbname}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{hostUid}}",
+								"database",
+								"lock",
+								"{{dbname}}"
+							]
+						},
+						"description": "Get lock information for a database. Returns lock information including lock entries, transactions, and lock statistics.\n\n**URI:**\n```\nPOST /:hostUid/database/lock/:dbname\n```\n**Example:**\n```\nPOST /host-uid-1/database/lock/demodb\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\nContent-Type: application/json\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n- `dbname` - Database name\n\n**Request Body:**\n```json\n{}\n```\n\n**Note:** Request body is an empty object. No fields are required.\n\n**Success Response (200 OK):**\n```json\n{\n  \"lockinfo\": [\n    {\n      \"dinterval\": \"1.00\",\n      \"esc\": \"100000\",\n      \"lot\": [\n        {\n          \"entry\": [\n            {\n              \"lock_holders\": [\n                {\n                  \"count\": \"1\",\n                  \"granted_mode\": \"IS_LOCK\",\n                  \"nsubgranules\": \"0\",\n                  \"tran_index\": \"1\"\n                }\n              ],\n              \"num_b_holders\": \"0\",\n              \"num_holders\": \"1\",\n              \"num_waiters\": \"0\",\n              \"ob_type\": \"Class = code\",\n              \"oid\": \"0|201|-32763\"\n            }\n          ],\n          \"maxnumlock\": \"10000\",\n          \"numlocked\": \"6\"\n        }\n      ],\n      \"transaction\": [\n        {\n          \"@uid\": \"DBA\",\n          \"host\": \"lgj1089-36\",\n          \"index\": \"1\",\n          \"isolevel\": \"COMMITTED READ\",\n          \"pid\": \"44371\",\n          \"pname\": \"csql\",\n          \"timeout\": \":\"\n        }\n      ]\n    }\n  ]\n}\n```\n\n**Response Field Descriptions:**\n- `lockinfo` - Array of lock information objects\n  - `dinterval` - Deadlock interval\n  - `esc` - ESC (Escalation) value\n  - `lot` - Lock object table array\n    - `entry` - Array of lock entries\n      - `lock_holders` (optional) - Array of lock holder information (only present when lock is held)\n        - `count` - Count\n        - `granted_mode` - Granted mode (e.g., \"IS_LOCK\", \"IX_LOCK\")\n        - `nsubgranules` - Number of sub-granules\n        - `tran_index` - Transaction index\n      - `num_b_holders` - Number of B holders (may be \"missing\" or numeric string)\n      - `num_holders` - Number of holders (may be \"inser\" or numeric string)\n      - `num_waiters` - Number of waiters (may be \"=\" or numeric string)\n      - `ob_type` - Object type\n      - `oid` - Object ID\n    - `maxnumlock` - Maximum number of locks\n    - `numallocated` (optional) - Number of allocated locks (may not be present)\n    - `numlocked` - Number of locked objects\n    - `sizelock` (optional) - Size of lock (may not be present)\n  - `transaction` - Array of transaction information\n    - `@uid` - User ID\n    - `host` - Host name\n    - `index` - Transaction index\n    - `isolevel` - Isolation level\n    - `pid` - Process ID\n    - `pname` - Process name\n    - `timeout` - Timeout\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Host not found\",\n  \"error\": \"Not Found\"\n}\n```\n\n**Error Response (500 Internal Server Error):**\n```json\n{\n  \"statusCode\": 500,\n  \"message\": \"Failed to get lock information\",\n  \"error\": \"Internal Server Error\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transaction Info",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"dbuser\": \"dba\",\n  \"dbpasswd\": \"\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/{{hostUid}}/database/transaction-info/{{dbname}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{hostUid}}",
+								"database",
+								"transaction-info",
+								"{{dbname}}"
+							]
+						},
+						"description": "Get transaction information for a database. Returns domain-only data (CMS envelope removed).\n\n**URI:**\n```\nPOST /:hostUid/database/transaction-info/:dbname\n```\n**Example:**\n```\nPOST /host-uid-1/database/transaction-info/demodb\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\nContent-Type: application/json\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n- `dbname` - Database name\n\n**Request Body (Required Fields):**\n```json\n{\n  \"dbuser\": \"dba\",\n  \"dbpasswd\": \"\"\n}\n```\n\n**Request Body Field Descriptions:**\n- `dbuser` - Database user name\n- `dbpasswd` - Database password (can be empty string)\n\n**Success Response (200 OK):**\n```json\n{\n  \"dbname\": \"demodb\",\n  \"transactioninfo\": [\n    {\n      \"transaction\": [\n        {\n          \"@user\": \"DBA\",\n          \"SQL_ID\": \"empty\",\n          \"host\": \"lgj1089-3-60\",\n          \"pid\": \"1684512\",\n          \"program\": \"query_editor_cub_cas_1\",\n          \"query_time\": \"0.00\",\n          \"tran_time\": \"0.00\",\n          \"tranindex\": \"2(ACTIVE)\",\n          \"wait_for_lock_holder\": \"-1\"\n        }\n      ]\n    }\n  ]\n}\n```\n\n**Response Field Descriptions:**\n- `dbname` - Database name\n- `transactioninfo` - Array of transaction information containers\n  - `transaction` - Array of transaction entries\n    - `@user` - User name\n    - `SQL_ID` - SQL ID\n    - `host` - Host name\n    - `pid` - Process ID\n    - `program` - Program name\n    - `query_time` - Query time\n    - `tran_time` - Transaction time\n    - `tranindex` - Transaction index (may include status like \"ACTIVE\")\n    - `wait_for_lock_holder` - Wait for lock holder\n\n**Error Response (400 Bad Request):**\n```json\n{\n  \"statusCode\": 400,\n  \"message\": \"Missing required fields: dbuser, dbpasswd\",\n  \"error\": \"Bad Request\"\n}\n```\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Host not found\",\n  \"error\": \"Not Found\"\n}\n```\n\n**Error Response (500 Internal Server Error):**\n```json\n{\n  \"statusCode\": 500,\n  \"message\": \"Failed to get transaction information\",\n  \"error\": \"Internal Server Error\"\n}\n```"
 					},
 					"response": []
 				},

@@ -10,6 +10,8 @@ import {
   SetAutoAddVolResponse,
   ClassInfoRequest,
   ClassInfoResponse,
+  GetAutoExecQueryErrLogRequest,
+  GetAutoExecQueryErrLogResponse,
 } from '@api-interfaces';
 import { CmsConfigService } from '@cms-config/cms-config.service';
 import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.service';
@@ -27,12 +29,14 @@ import {
   SetAutoExecQueryCmsRequest,
   SetAutoAddVolCmsRequest,
   ClassInfoCmsRequest,
+  GetAutoExecQueryErrLogCmsRequest,
 } from '@type/cms-request';
 import {
   GetAutoExecQueryCmsResponse,
   SetAutoExecQueryCmsResponse,
   SetAutoAddVolCmsResponse,
   ClassInfoCmsResponse,
+  GetAutoExecQueryErrLogCmsResponse,
 } from '@type/cms-response';
 import { GetAllSysParamCmsResponse } from '@type/cms-response/get-all-sys-param-cms-response';
 import { parseConfigParams } from '@util';
@@ -372,6 +376,43 @@ export class DatabaseConfigService {
     const response = await this.cmsClient.postAuthenticated<
       ClassInfoCmsRequest,
       ClassInfoCmsResponse
+    >(url, cmsRequest);
+
+    checkCmsTokenError(response);
+    checkCmsStatusError(response);
+
+    const { __EXEC_TIME, note, status, task, ...dataOnly } = response;
+
+    return dataOnly;
+  }
+
+  /**
+   * Get auto-execution query error log.
+   * Returns domain-only data (CMS envelope removed).
+   *
+   * @param userId User ID from JWT
+   * @param hostUid Host UID
+   * @param request Client request (empty object)
+   * @returns GetAutoExecQueryErrLogResponse Error log entries
+   * @throws DatabaseError If request fails or CMS status is fail
+   */
+  @HandleDatabaseErrors()
+  async getAutoExecQueryErrLog(
+    userId: string,
+    hostUid: string,
+    request: GetAutoExecQueryErrLogRequest
+  ): Promise<GetAutoExecQueryErrLogResponse> {
+    const host = await this.hostService.findHostInternal(userId, hostUid);
+    const url = `https://${host.address}:${host.port}/cm_api`;
+
+    const cmsRequest: GetAutoExecQueryErrLogCmsRequest = {
+      task: 'getautoexecqueryerrlog',
+      token: host.token || '',
+    };
+
+    const response = await this.cmsClient.postAuthenticated<
+      GetAutoExecQueryErrLogCmsRequest,
+      GetAutoExecQueryErrLogCmsResponse
     >(url, cmsRequest);
 
     checkCmsTokenError(response);

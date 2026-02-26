@@ -8,6 +8,8 @@ import {
   GetBackupInfoClientResponse,
   SetBackupInfoClientRequest,
   SetBackupInfoClientResponse,
+  GetAutoBackupDbErrLogRequest,
+  GetAutoBackupDbErrLogResponse,
 } from '@api-interfaces';
 import { validateRequiredFields } from '@util';
 import { DatabaseBackupService } from './database-backup.service';
@@ -159,5 +161,33 @@ export class DatabaseBackupController {
       'DatabaseBackupController'
     );
     return await this.backupService.getBackupSchedule(userId, hostUid, dbname);
+  }
+
+  /**
+   * Get auto-backup database error log.
+   * Returns domain-only data (CMS envelope removed).
+   *
+   * @route POST /:hostUid/database/auto-backup-db-err-log
+   * @param req Express request (contains authenticated user)
+   * @param hostUid Host unique identifier from path parameter
+   * @param body Request body (empty object)
+   * @returns GetAutoBackupDbErrLogResponse Error log entries
+   * @example
+   * // POST /host-uid/database/auto-backup-db-err-log
+   * // Body: {}
+   */
+  @Post('auto-backup-db-err-log')
+  async getAutoBackupDbErrLog(
+    @Request() req,
+    @Param('hostUid') hostUid: string,
+    @Body() body: GetAutoBackupDbErrLogRequest
+  ): Promise<GetAutoBackupDbErrLogResponse> {
+    const userId = req.user.sub;
+
+    Logger.log(
+      `Getting auto-backup database error log on host: ${hostUid}`,
+      'DatabaseBackupController'
+    );
+    return await this.backupService.getAutoBackupDbErrLog(userId, hostUid, body);
   }
 }

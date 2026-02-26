@@ -314,4 +314,146 @@ describe('DatabaseConfigService', () => {
       ).rejects.toThrow(DatabaseError);
     });
   });
+
+  describe('getAutoExecQueryErrLog', () => {
+    const mockRequest = {};
+
+    it('should successfully get auto exec query error log with errors', async () => {
+      const mockSuccessResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'none',
+        status: 'success',
+        task: 'getautoexecqueryerrlog',
+        error: [
+          {
+            '@username': 'admin',
+            dbname: 'demodb',
+            error_code: '0',
+            error_desc: 'start',
+            error_time: '2026/01/24 15:10:00',
+            query_id: 'test_query',
+          },
+          {
+            '@username': 'admin',
+            dbname: 'demodb',
+            error_code: '0',
+            error_desc: 'success',
+            error_time: '2026/01/24 15:10:00',
+            query_id: 'test_query',
+          },
+        ],
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      const result = await service.getAutoExecQueryErrLog(
+        mockUserId,
+        mockHostUid,
+        mockRequest
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'getautoexecqueryerrlog',
+          token: mockHost.token,
+        })
+      );
+      expect(result).toEqual({
+        error: [
+          {
+            '@username': 'admin',
+            dbname: 'demodb',
+            error_code: '0',
+            error_desc: 'start',
+            error_time: '2026/01/24 15:10:00',
+            query_id: 'test_query',
+          },
+          {
+            '@username': 'admin',
+            dbname: 'demodb',
+            error_code: '0',
+            error_desc: 'success',
+            error_time: '2026/01/24 15:10:00',
+            query_id: 'test_query',
+          },
+        ],
+      });
+    });
+
+    it('should successfully get auto exec query error log with null error', async () => {
+      const mockSuccessResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'none',
+        status: 'success',
+        task: 'getautoexecqueryerrlog',
+        error: null,
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      const result = await service.getAutoExecQueryErrLog(
+        mockUserId,
+        mockHostUid,
+        mockRequest
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'getautoexecqueryerrlog',
+          token: mockHost.token,
+        })
+      );
+      expect(result).toEqual({
+        error: null,
+      });
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+
+      await expect(
+        service.getAutoExecQueryErrLog(mockUserId, mockHostUid, mockRequest)
+      ).rejects.toThrow(HostError);
+    });
+
+    it('should throw DatabaseError if CMS token error', async () => {
+      const tokenErrorResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'Invalid token',
+        status: 'error',
+        task: 'getautoexecqueryerrlog',
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(tokenErrorResponse);
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+
+      await expect(
+        service.getAutoExecQueryErrLog(mockUserId, mockHostUid, mockRequest)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      const failedResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'Error log retrieval failed',
+        status: 'failed',
+        task: 'getautoexecqueryerrlog',
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(failedResponse);
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+
+      await expect(
+        service.getAutoExecQueryErrLog(mockUserId, mockHostUid, mockRequest)
+      ).rejects.toThrow(DatabaseError);
+    });
+  });
 });

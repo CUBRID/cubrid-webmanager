@@ -4,7 +4,6 @@ import { nanoid } from 'nanoid';
 import { useDispatch } from 'react-redux';
 import React from 'react';
 import { setBuffering } from '@/shared/slice/globalSlice.js';
-import useDatabaseOperation from '@/features/sidenav/hook/useDatabaseOperation.js';
 import {
   setCheckDB,
   setCompactDB,
@@ -14,6 +13,9 @@ import {
   setRenameDB,
   setBackupDB, setCopyDB, setRestoreDB, setUnloadDB
 } from '@/features/sidenav/sideNavSlice.js';
+import { setLockInformation } from '../../sideNavSlice';
+import { setLoadDB } from '../../sideNavSlice';
+import useDatabaseOperation from '../../../domain/database/hook/useDatabaseOperation';
 
 const DatabaseMenu = ({ node, clientX, clientY, open, onClose }) => {
   const { startDatabase, stopDatabase } = useDatabaseOperation();
@@ -50,7 +52,10 @@ const DatabaseMenu = ({ node, clientX, clientY, open, onClose }) => {
         {
           label: 'Database Load',
           key: nanoid(4),
-          disabled: true,
+          disabled: node.status === 'active',
+          onClick: ()=>{
+            dispatch(setLoadDB({open: true, node}))
+          }
         },
         // {
         //     label: "Database Optimize",
@@ -131,7 +136,9 @@ const DatabaseMenu = ({ node, clientX, clientY, open, onClose }) => {
         {
           label: 'Lock Information',
           key: nanoid(4),
-          disabled: true,
+          onClick: ()=>{
+            dispatch(setLockInformation({ open: true, node }));
+          }
         },
         {
           label: 'Transaction Info',

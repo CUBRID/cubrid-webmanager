@@ -1,16 +1,11 @@
 import { ConfigProvider, theme } from 'antd';
 import { Provider } from 'react-redux';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import ProtectedRoute from './routes/ProtectedRoute.jsx';
-import Login from './layouts/AuthLayout/Login.jsx';
 import { store } from './store/store';
-import AppLayout from './layouts/AppLayout/AppLayout.jsx';
-import PublicRoute from './routes/PublicRoute.jsx';
-import Register from './layouts/AuthLayout/Register.jsx';
 import MainRoute from '@/routes/MainRoute.jsx';
 import Buffering from '@/components/common/Buffering/Buffering.jsx';
 import ErrorModal from '@/components/common/modal/ErrorModal/ErrorModal.jsx';
 import React from 'react';
+import SuccessModal from './components/common/modal/SuccessModal/SuccessModal';
 
 const lightTheme = {
   primary: '#2563EB',
@@ -41,6 +36,7 @@ function App() {
         <MainRoute />
         <Buffering />
         <ErrorModal />
+        <SuccessModal/>
       </ConfigProvider>
     </Provider>
   );

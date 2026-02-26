@@ -3,8 +3,8 @@ import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { nanoid } from 'nanoid';
 import { useDispatch, useSelector } from 'react-redux';
 import { setBuffering } from '@/shared/slice/globalSlice.js';
-import useBrokerOperation from '@/features/sidenav/hook/useBrokerOperation.js';
 import { addTab } from '@/shared/slice/tabSlice.js';
+import useBrokerOperation from '../../../domain/broker/hook/useBrokerOperation';
 
 export default function ({ node, clientX, clientY, open, onClose }) {
   const dispatch = useDispatch();

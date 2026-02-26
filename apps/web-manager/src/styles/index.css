@@ -178,3 +178,20 @@ button.error:hover{
     background-color: white;
     transform: translateX(-8%);
 }
+
+/* Target the individual tab wrappers */
+.full__width__tab .ant-tabs-nav-list {
+    width: 100%;
+    display: flex;
+}
+
+.full__width__tab .ant-tabs-tab {
+    flex: 1; /* Forces both tabs to grow equally */
+    justify-content: center; /* Ensures the label stays centered */
+    margin: 0 !important; /* Removes default gaps between tabs */
+}
+.disabled{
+    pointer-events: none;
+    opacity: 0.7;
+    cursor: not-allowed;
+}

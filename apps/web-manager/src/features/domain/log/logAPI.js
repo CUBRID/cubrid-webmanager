@@ -52,10 +52,7 @@ export const getLoadAccessLogAPI = async (host) => {
 };
 
 export const getAutoExecQueryErrLog = async (host) => {
-  const payload = {
-    task: 'getautoexecqueryerrlog',
-  };
-
-  const response = await getResponse(host, payload);
-  return { result: response, success: true };
+  const url = `${host.uid}/database/auto-exec-query-err-log`;
+  const { data } = await axios.post(url);
+  return { result: data, success: true };
 };

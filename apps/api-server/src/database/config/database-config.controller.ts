@@ -12,6 +12,8 @@ import {
   SetAutoAddVolResponse,
   ClassInfoRequest,
   ClassInfoResponse,
+  GetAutoExecQueryErrLogRequest,
+  GetAutoExecQueryErrLogResponse,
 } from '@api-interfaces';
 import { validateRequiredFields } from '@util';
 import { DatabaseConfigService } from './database-config.service';
@@ -221,5 +223,33 @@ export class DatabaseConfigController {
       'DatabaseConfigController'
     );
     return await this.configService.getClassInfo(userId, hostUid, dbname, body);
+  }
+
+  /**
+   * Get auto-execution query error log.
+   * Returns domain-only data (CMS envelope removed).
+   *
+   * @route POST /:hostUid/database/auto-exec-query-err-log
+   * @param req Express request (contains authenticated user)
+   * @param hostUid Host unique identifier from path parameter
+   * @param body Request body (empty object)
+   * @returns GetAutoExecQueryErrLogResponse Error log entries
+   * @example
+   * // POST /host-uid/database/auto-exec-query-err-log
+   * // Body: {}
+   */
+  @Post('auto-exec-query-err-log')
+  async getAutoExecQueryErrLog(
+    @Request() req,
+    @Param('hostUid') hostUid: string,
+    @Body() body: GetAutoExecQueryErrLogRequest
+  ): Promise<GetAutoExecQueryErrLogResponse> {
+    const userId = req.user.sub;
+
+    Logger.log(
+      `Getting auto-exec query error log on host: ${hostUid}`,
+      'DatabaseConfigController'
+    );
+    return await this.configService.getAutoExecQueryErrLog(userId, hostUid, body);
   }
 }

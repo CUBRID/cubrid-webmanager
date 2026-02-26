@@ -3,6 +3,8 @@ import { DatabaseBackupService } from './database-backup.service';
 import { HostService } from '@host';
 import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.service';
 import { AddBackupInfoClientRequest, SetBackupInfoClientRequest } from '@api-interfaces';
+import { DatabaseError } from '@error/database/database-error';
+import { HostError } from '@error/index';
 import * as common from '@common';
 
 // Mock the checkCmsTokenError and checkCmsStatusError functions
@@ -234,6 +236,140 @@ describe('DatabaseBackupService', () => {
         dbname: 'testdb',
         backups: [],
       });
+    });
+  });
+
+  describe('getAutoBackupDbErrLog', () => {
+    const mockRequest = {};
+
+    it('should successfully get auto backup db error log with errors', async () => {
+      const mockSuccessResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'none',
+        status: 'success',
+        task: 'getautobackupdberrlog',
+        error: [
+          {
+            backupid: 'test_backup',
+            dbname: 'demodb',
+            error_desc: 'backupdb(demodb): auto job start',
+            error_time: '2026/01/24 15:18:00',
+          },
+          {
+            backupid: 'test_backup',
+            dbname: 'demodb',
+            error_desc: 'backupdb(demodb): success',
+            error_time: '2026/01/24 15:18:00',
+          },
+        ],
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      const result = await service.getAutoBackupDbErrLog(
+        mockUserId,
+        mockHostUid,
+        mockRequest
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'getautobackupdberrlog',
+          token: mockHost.token,
+        })
+      );
+      expect(result).toEqual({
+        error: [
+          {
+            backupid: 'test_backup',
+            dbname: 'demodb',
+            error_desc: 'backupdb(demodb): auto job start',
+            error_time: '2026/01/24 15:18:00',
+          },
+          {
+            backupid: 'test_backup',
+            dbname: 'demodb',
+            error_desc: 'backupdb(demodb): success',
+            error_time: '2026/01/24 15:18:00',
+          },
+        ],
+      });
+    });
+
+    it('should successfully get auto backup db error log with null error', async () => {
+      const mockSuccessResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'none',
+        status: 'success',
+        task: 'getautobackupdberrlog',
+        error: null,
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+
+      const result = await service.getAutoBackupDbErrLog(
+        mockUserId,
+        mockHostUid,
+        mockRequest
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'getautobackupdberrlog',
+          token: mockHost.token,
+        })
+      );
+      expect(result).toEqual({
+        error: null,
+      });
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+
+      await expect(
+        service.getAutoBackupDbErrLog(mockUserId, mockHostUid, mockRequest)
+      ).rejects.toThrow(HostError);
+    });
+
+    it('should throw DatabaseError if CMS token error', async () => {
+      const tokenErrorResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'Invalid token',
+        status: 'error',
+        task: 'getautobackupdberrlog',
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(tokenErrorResponse);
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+
+      await expect(
+        service.getAutoBackupDbErrLog(mockUserId, mockHostUid, mockRequest)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      const failedResponse = {
+        __EXEC_TIME: '0 ms',
+        note: 'Error log retrieval failed',
+        status: 'failed',
+        task: 'getautobackupdberrlog',
+      };
+
+      cmsClient.postAuthenticated.mockResolvedValue(failedResponse);
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+
+      await expect(
+        service.getAutoBackupDbErrLog(mockUserId, mockHostUid, mockRequest)
+      ).rejects.toThrow(DatabaseError);
     });
   });
 });

@@ -6,6 +6,8 @@ import {
   GetBackupInfoClientResponse,
   SetBackupInfoClientRequest,
   SetBackupInfoClientResponse,
+  GetAutoBackupDbErrLogRequest,
+  GetAutoBackupDbErrLogResponse,
 } from '@api-interfaces';
 import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.service';
 import {
@@ -21,12 +23,14 @@ import {
   DeleteBackupInfoCmsRequest,
   GetBackupInfoCmsRequest,
   SetBackupInfoCmsRequest,
+  GetAutoBackupDbErrLogCmsRequest,
 } from '@type/cms-request';
 import {
   AddBackupInfoCmsResponse,
   DeleteBackupInfoCmsResponse,
   GetBackupInfoCmsResponse,
   SetBackupInfoCmsResponse,
+  GetAutoBackupDbErrLogCmsResponse,
 } from '@type/cms-response';
 
 /**
@@ -238,5 +242,42 @@ export class DatabaseBackupService {
       dbname: responseDbname,
       backups: backupArray || [],
     };
+  }
+
+  /**
+   * Get auto-backup database error log.
+   * Returns domain-only data (CMS envelope removed).
+   *
+   * @param userId User ID from JWT
+   * @param hostUid Host UID
+   * @param request Client request (empty object)
+   * @returns GetAutoBackupDbErrLogResponse Error log entries
+   * @throws DatabaseError If request fails or CMS status is fail
+   */
+  @HandleDatabaseErrors()
+  async getAutoBackupDbErrLog(
+    userId: string,
+    hostUid: string,
+    request: GetAutoBackupDbErrLogRequest
+  ): Promise<GetAutoBackupDbErrLogResponse> {
+    const host = await this.hostService.findHostInternal(userId, hostUid);
+    const url = `https://${host.address}:${host.port}/cm_api`;
+
+    const cmsRequest: GetAutoBackupDbErrLogCmsRequest = {
+      task: 'getautobackupdberrlog',
+      token: host.token || '',
+    };
+
+    const response = await this.cmsClient.postAuthenticated<
+      GetAutoBackupDbErrLogCmsRequest,
+      GetAutoBackupDbErrLogCmsResponse
+    >(url, cmsRequest);
+
+    checkCmsTokenError(response);
+    checkCmsStatusError(response);
+
+    const { __EXEC_TIME, note, status, task, ...dataOnly } = response;
+
+    return dataOnly;
   }
 }
