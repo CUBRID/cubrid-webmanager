@@ -6,6 +6,7 @@ import { useDispatch, useSelector, useStore } from 'react-redux';
 import { setBackupModal } from '@/features/sidenav/sideNavSlice.js';
 import useBackupAction from '@/features/sidenav/hook/useBackupAction.js';
 import { setBuffering } from '@/shared/slice/globalSlice.js';
+import { setAutoBackupLog } from '../../sideNavSlice';
 
 const BackupMenu = ({ node, clientX, clientY, open, onClose }) => {
   const { databases } = useSelector((state) => state.database);
@@ -23,9 +24,12 @@ const BackupMenu = ({ node, clientX, clientY, open, onClose }) => {
       },
     },
     {
-      label: 'Auto Backup Plan',
+      label: 'Auto Backup Log',
       key: nanoid(4),
       icon: <PlusOutlined />,
+      onClick: () => {
+        dispatch(setAutoBackupLog({ open: true, node }));
+      }
     },
     {
       label: 'Refresh',

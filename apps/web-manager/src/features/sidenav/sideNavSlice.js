@@ -20,6 +20,7 @@ const initialState = {
   autoVolume: { open: false },
   autoQueryLog: { open: false },
   unloadDB: { open: false },
+  autoBackupLog: { open: false },
   lockInformation: { open: false },
   loadDB: { open: false },
 };
@@ -85,6 +86,9 @@ const sideNavSlice = createSlice({
     setAutoQueryLog: (state, action) => {
       state.autoQueryLog = action.payload;
     },
+    setAutoBackupLog: (state, action) => {
+      state.autoBackupLog = action.payload;
+    },
     setLockInformation: (state, action) => {
       state.lockInformation = action.payload;
     },
@@ -114,6 +118,7 @@ export const {
   setAutoVolume,
   setUnloadDB,
   setAutoQueryLog,
+  setAutoBackupLog,
   setLockInformation,
   setLoadDB,
 } = sideNavSlice.actions;
