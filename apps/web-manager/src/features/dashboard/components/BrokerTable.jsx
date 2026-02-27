@@ -69,12 +69,12 @@ const columns = [
 ];
 
 const BrokerTable = (props) => {
-  const { intervalDashboard } = useSelector((state) => state.global);
+  const { preference } = useSelector((state) => state.global);
   const { activeTabKey } = useSelector((state) => state.tab);
   const { activeHost } = useSelector((state) => state.host);
   const [brokerData, setBrokerData] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const { brokerStatusInterval } = preference;
   // ✅ store interval per component
   const intervalRef = useRef(null);
 
@@ -120,8 +120,9 @@ const BrokerTable = (props) => {
 
     // start new interval only if this panel is active
     if (props.uniqueKey === activeTabKey) {
-      if (intervalDashboard) {
-        intervalRef.current = setInterval(getRefreshData, intervalDashboard * 1000);
+      const value = parseInt(brokerStatusInterval, 10);
+      if (brokerStatusInterval > 0) {
+        intervalRef.current = setInterval(getRefreshData, value * 1000);
       }
     }
 
@@ -129,9 +130,10 @@ const BrokerTable = (props) => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [activeTabKey]);
+  }, [activeTabKey, brokerStatusInterval]);
 
   return (
     <div className={styles.broker}>

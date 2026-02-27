@@ -20,7 +20,6 @@ export const getAdminLogFilesAPI = async (host) => {
   const url = `${host.uid}/log/cms`;
 
   const { data } = axios.get(url);
-  console.log(data);
   const response = await getResponse(host, payload);
   return { result: response.adminloginfo, success: true };
 };

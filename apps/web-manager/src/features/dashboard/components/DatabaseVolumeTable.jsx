@@ -48,12 +48,12 @@ const getSizeFormat = (size) => {
 };
 
 export default function DatabaseVolumeTable(props) {
-  const { intervalDashboard } = useSelector((state) => state.global);
+  const { preference } = useSelector((state) => state.global);
   const { activeTabKey } = useSelector((state) => state.tab);
   const { activeHost } = useSelector((state) => state.host);
   const [dataSource, setDataSource] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const { dashboardInterval } = preference;
   // ✅ persistent interval storage
   const intervalRef = useRef(null);
 
@@ -145,8 +145,9 @@ export default function DatabaseVolumeTable(props) {
     }
     // ✅ Start new interval if this panel is active
     if (props.uniqueKey === activeTabKey) {
-      if (intervalDashboard) {
-        intervalRef.current = setInterval(getSpaceInfo, intervalDashboard * 1000);
+      const value = parseInt(dashboardInterval, 10);
+      if (dashboardInterval > 0) {
+        intervalRef.current = setInterval(getSpaceInfo, value * 1000);
       }
     }
 
@@ -154,9 +155,10 @@ export default function DatabaseVolumeTable(props) {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [activeTabKey]);
+  }, [activeTabKey, dashboardInterval]);
 
   return (
     <div className={styles.volume}>

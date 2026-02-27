@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import styles from './styles/AppBar.module.css';
 import { Dropdown } from 'antd';
 import { LogoutOutlined, UserDeleteOutlined } from '@ant-design/icons';
@@ -19,6 +19,9 @@ import ExportHost from '@/features/appbar/components/modal/ExportHost.jsx';
 import BrokerLogParser from '@/features/appbar/components/modal/BrokerLogParser.jsx';
 import Tool from '@/features/appbar/components/Tool.jsx';
 import ManageCMUser from '@/features/appbar/components/modal/ManageCMUser.jsx';
+import UserPreference from './components/modal/UserPreference';
+import { getUserPreferenceAPI } from './appBarAPI';
+import { setPreference } from '../../shared/slice/globalSlice';
 
 const AppBar = () => {
   const dispatch = useDispatch();
@@ -61,6 +64,15 @@ const AppBar = () => {
       },
     },
   ];
+
+  useEffect(() => {
+    getUserPreferenceAPI().then(response => {
+
+      if(response.success) {
+        dispatch(setPreference(response.result));
+      }
+    })
+  },[])
 
   return (
     <div className={styles.layout}>
@@ -106,6 +118,7 @@ const AppBar = () => {
       <ExportHost />
       <BrokerLogParser />
       <ManageCMUser />
+      <UserPreference/>
     </div>
   );
 };

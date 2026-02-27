@@ -9,6 +9,7 @@ const initialState = {
   importHost: false,
   brokerLogParser: false,
   manageCMUser: false,
+  userPreference: false,
 };
 
 const appBarSlice = createSlice({
@@ -39,6 +40,9 @@ const appBarSlice = createSlice({
     setManageCMUser: (state, action) => {
       state.manageCMUser = action.payload;
     },
+    setUserPreference: (state, action) => {
+      state.userPreference = action.payload;
+    }
   },
 });
 
@@ -51,5 +55,6 @@ export const {
   setImportHost,
   setBrokerLogParser,
   setManageCMUser,
+  setUserPreference,
 } = appBarSlice.actions;
 export default appBarSlice.reducer;

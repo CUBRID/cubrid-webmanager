@@ -11,12 +11,12 @@ import {
 import styles from '../styles/DatabaseTable.module.css';
 
 export const DatabaseTable = (props) => {
-  const { intervalDashboard } = useSelector((state) => state.global);
+  const { preference } = useSelector((state) => state.global);
   const { activeTabKey } = useSelector((state) => state.tab);
   const { activeHost } = useSelector((state) => state.host);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const { dashboardInterval } = preference;
   // ✅ useRef to store the interval ID safely
   const intervalRef = useRef(null);
 
@@ -55,14 +55,11 @@ export const DatabaseTable = (props) => {
 
     const response = await getDatabasesAPI(activeHost);
     if (response.success) {
-      const prefAuto = getPrefAutoStartupDatabase();
       const newData = response.result?.map((res) => {
-        const prefKey = `${activeHost.uid}.${res.dbname}`;
         return {
           serverId: activeHost.uid,
           key: nanoid(4),
           database: res.dbname,
-          auto: prefAuto?.includes(prefKey),
           status: res.status === 'active' ? 'running' : 'stopped',
         };
       });
@@ -88,8 +85,8 @@ export const DatabaseTable = (props) => {
 
     // ✅ start a new one if this panel is active
     if (props.uniqueKey === activeTabKey) {
-      if (intervalDashboard) {
-        const value = parseInt(intervalDashboard, 10);
+      const value = parseInt(dashboardInterval, 10);
+      if (dashboardInterval > 0) {
         intervalRef.current = setInterval(getRefreshData, value * 1000);
       }
     }
@@ -98,9 +95,10 @@ export const DatabaseTable = (props) => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [activeTabKey]);
+  }, [activeTabKey, dashboardInterval]);
 
   return (
     <div className={styles.database}>

@@ -5,6 +5,7 @@ import { setOpenHostVersion } from '@/features/domain/host/hostSlice.js';
 import CubridConfig from './contents/CubridConfig.jsx';
 import { nanoid } from 'nanoid';
 import { addTab, setActiveTabKey } from '@/shared/slice/tabSlice.js';
+import { setUserPreference } from '../appBarSlice';
 
 const CONFIG_PARAM_CONTENT = [
   { title: 'Edit Cubrid Config', type: 'cubrid_config' },
@@ -18,6 +19,7 @@ const Action = () => {
   const menus = [
     {
       label: 'Dashboard Config',
+      onClick: () => dispatch(setUserPreference(true)),
     },
     {
       label: 'Properties',

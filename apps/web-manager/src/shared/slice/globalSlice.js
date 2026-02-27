@@ -2,7 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import { getIntervalDashboard } from '@/preference/pref.js';
 
 const initialState = {
-  intervalDashboard: getIntervalDashboard(), // default = 10, 0 is no refresh
+  preference: {}, // default = 10, 0 is no refresh
   buffering: false,
   deleteConfirm: { open: false },
   errorModal: { open: false },
@@ -14,8 +14,8 @@ const globalSlice = createSlice({
   name: 'global',
   initialState,
   reducers: {
-    setIntervalDashboard: (state, action) => {
-      state.intervalDashboard = action.payload;
+    setPreference: (state, action) => {
+      state.preference = action.payload;
     },
     setBuffering: (state, action) => {
       state.buffering = action.payload;
@@ -36,7 +36,7 @@ const globalSlice = createSlice({
 });
 
 export const {
-  setIntervalDashboard,
+  setPreference,
   setBuffering,
   setDeleteConfirm,
   setErrorModal ,
