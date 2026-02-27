@@ -182,3 +182,22 @@ export const loadDBAPI = async (host, payload) => {
 
   return { result: data, success: true };
 }
+
+export const setAutoStartAPI = async (host, dbname) => {
+  const url = `/${host.uid}/database/auto-start`;
+  const payload = {
+    confname: "cubridconf",
+    dbname
+  }
+  const { data } = await axios.post(url, payload);
+  return { result: data, success: true };
+};
+export const removeAutoStartAPI = async (host, dbname) => {
+  const url = `/${host.uid}/database/auto-start`;
+  const payload = {
+    confname: 'cubridconf',
+    dbname,
+  };
+  const { data } = await axios.delete(url, {data:payload});
+  return { result: data, success: true };
+};
