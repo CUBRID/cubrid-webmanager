@@ -5,6 +5,7 @@ import {
   CreateDatabaseWithConfigRequest,
   CreateDatabaseWithConfigResponse,
   DatabaseVolumeInfoClientResponse,
+  GetCreatedbInfoClientResponse,
   StartInfoClientResponse,
   SaveDatabaseProfileRequest,
 } from '@api-interfaces';
@@ -48,6 +49,28 @@ export class DatabaseLifecycleController {
     Logger.log(`Getting start info for host: ${hostUid}`, 'DatabaseLifecycleController');
     const response = await this.lifecycleService.startInfo(userId, hostUid);
     return response;
+  }
+
+  /**
+   * Get default information for creating a database.
+   * Returns default database directory path, CUBRID version, and installation path.
+   *
+   * @route GET /:hostUid/database/create-info
+   * @param req Express request (contains authenticated user)
+   * @param hostUid Host unique identifier from path parameter
+   * @returns GetCreatedbInfoClientResponse Default database creation information
+   * @example
+   * // GET /host-uid/database/create-info
+   */
+  @Get('create-info')
+  async getCreateInfo(
+    @Request() req,
+    @Param('hostUid') hostUid: string
+  ): Promise<GetCreatedbInfoClientResponse> {
+    const userId = req.user.sub;
+
+    Logger.log(`Getting create info for host: ${hostUid}`, 'DatabaseLifecycleController');
+    return await this.lifecycleService.getCreatedbInfo(userId, hostUid);
   }
 
   /**

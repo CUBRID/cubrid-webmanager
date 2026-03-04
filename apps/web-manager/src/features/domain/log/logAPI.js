@@ -50,6 +50,13 @@ export const getLoadAccessLogAPI = async (host) => {
   return { result: response, success: true };
 };
 
+
+export const getAutoExecQueryErrLog = async (host) => {
+  const url = `${host.uid}/database/auto-exec-query-err-log`;
+  const { data } = await axios.post(url);
+  return { result: data, success: true };
+}
+
 export const getAutoBackupDBErrLogAPI = async (host) => {
   const url = `${host.uid}/database/auto-backup-db-err-log`;
   const { data } = await axios.post(url);

@@ -75,6 +75,11 @@ export type LoadDatabaseCmsRequest = BaseCmsRequest & {
   index: string;
 
   /**
+   * Trigger
+   * Values : "none" / other values 
+   */
+  // trigger : string;
+  /**
    * Error control file
    * Values: "none" | file path
    */

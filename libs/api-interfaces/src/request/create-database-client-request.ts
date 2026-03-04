@@ -41,23 +41,27 @@ export type CreateDatabaseClientRequest = {
 
   /**
    * Number of pages for the database
+   * Accepts both number and string (will be converted to string for CMS)
    */
-  numpage: string;
+  numpage: string | number;
 
   /**
    * Page size in bytes
+   * Accepts both number and string (will be converted to string for CMS)
    */
-  pagesize: string;
+  pagesize: string | number;
 
   /**
    * Log size
+   * Accepts both number and string (will be converted to string for CMS)
    */
-  logsize: string;
+  logsize: string | number;
 
   /**
    * Log page size in bytes
+   * Accepts both number and string (will be converted to string for CMS)
    */
-  logpagesize: string;
+  logpagesize: string | number;
 
   /**
    * General volume path

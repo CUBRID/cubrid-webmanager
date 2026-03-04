@@ -43,3 +43,5 @@ export * from './lock-database-cms-request';
 export * from './get-auto-exec-query-err-log-cms-request';
 export * from './get-auto-backup-db-err-log-cms-request';
 export * from './get-transaction-info-cms-request';
+export * from './kill-transaction-cms-request';
+export * from './delete-database-cms-request';

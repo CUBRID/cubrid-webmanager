@@ -18,6 +18,7 @@ import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.servic
 import {
   checkCmsStatusError,
   checkCmsTokenError,
+  HandleCmsConfigErrors,
   HandleDatabaseErrors,
 } from '@common';
 import { ConfigError } from '@error/config/config-error';
@@ -168,7 +169,7 @@ export class DatabaseConfigService {
    * @returns SetAutoStartResponse Empty object on success
    * @throws DatabaseError If request fails, server parameter not found, or dbname already exists
    */
-  @HandleDatabaseErrors()
+  @HandleCmsConfigErrors()
   async setAutoStart(
     userId: string,
     hostUid: string,
@@ -189,6 +190,7 @@ export class DatabaseConfigService {
     if (!confdata || confdata.length === 0) {
       throw ConfigError.NoConfdata(request.confname);
     }
+    this.logger.debug(JSON.stringify((currentConfig)));
 
     // Find the server parameter using utility function
     // Type assertion is safe because parseConfigParams only uses conflist property
@@ -219,14 +221,15 @@ export class DatabaseConfigService {
     // Update confdata with new server line (lineNumber is 1-based, convert to 0-based index)
     const updatedConfdata = [...confdata];
     updatedConfdata[serverParam.lineNumber - 1] = updatedServerLine;
-
-    // Set updated configuration
-    return await this.cmsConfigService.setSystemParam(
+    const rv = await this.cmsConfigService.setSystemParam(
       userId,
       hostUid,
       request.confname,
       updatedConfdata
     );
+    // Set updated configuration
+    this.logger.debug(JSON.stringify(rv));
+    return rv
   }
 
   /**
@@ -239,7 +242,7 @@ export class DatabaseConfigService {
    * @returns RemoveAutoStartResponse Empty object on success
    * @throws DatabaseError If request fails, server parameter not found, or dbname does not exist
    */
-  @HandleDatabaseErrors()
+  @HandleCmsConfigErrors()
   async removeAutoStart(
     userId: string,
     hostUid: string,

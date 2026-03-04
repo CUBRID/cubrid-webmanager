@@ -13,6 +13,8 @@ import {
   RenameDatabaseRequest,
   LockDatabaseRequest,
   GetTransactionInfoRequest,
+  KillTransactionRequest,
+  DeleteDatabaseRequest,
 } from '@api-interfaces';
 import {
   UnloadDatabaseCmsResponse,
@@ -22,6 +24,8 @@ import {
   RenameDatabaseCmsResponse,
   LockDatabaseCmsResponse,
   GetTransactionInfoCmsResponse,
+  KillTransactionCmsResponse,
+  DeleteDatabaseCmsResponse,
 } from '@type/cms-response';
 import * as common from '@common';
 
@@ -1616,6 +1620,346 @@ describe('DatabaseManagementService', () => {
 
       await expect(
         service.getTransactionInfo(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+  });
+
+  describe('killTransaction', () => {
+    const mockSuccessResponse: KillTransactionCmsResponse = {
+      __EXEC_TIME: '84 ms',
+      dbname: 'demodb',
+      note: 'none',
+      status: 'success',
+      task: 'killtransaction',
+      transactioninfo: [
+        {
+          transaction: [
+            {
+              '@user': 'DBA',
+              SQL_ID: 'empty',
+              host: 'lgj1089-3-60',
+              pid: '2782204',
+              program: 'query_editor_cub_cas_1',
+              query_time: '0.00',
+              tran_time: '0.00',
+              tranindex: '1(ACTIVE)',
+              wait_for_lock_holder: '-1',
+            },
+          ],
+        },
+      ],
+    };
+
+    it('should successfully kill transaction by index', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: KillTransactionRequest = {
+        type: 'i',
+        parameter: '1',
+      };
+
+      const result = await service.killTransaction(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'killtransaction',
+          token: mockHost.token,
+          dbname: mockDbname,
+          type: 'i',
+          parameter: '1',
+        })
+      );
+      expect(result).toEqual({
+        dbname: 'demodb',
+        transactioninfo: [
+          {
+            transaction: [
+              {
+                '@user': 'DBA',
+                SQL_ID: 'empty',
+                host: 'lgj1089-3-60',
+                pid: '2782204',
+                program: 'query_editor_cub_cas_1',
+                query_time: '0.00',
+                tran_time: '0.00',
+                tranindex: '1(ACTIVE)',
+                wait_for_lock_holder: '-1',
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it('should successfully display active transactions (type d)', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: KillTransactionRequest = {
+        type: 'd',
+      };
+
+      const result = await service.killTransaction(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'killtransaction',
+          token: mockHost.token,
+          dbname: mockDbname,
+          type: 'd',
+        })
+      );
+      expect(result.dbname).toBe('demodb');
+    });
+
+    it('should successfully kill all transactions by process name', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: KillTransactionRequest = {
+        type: 'p',
+        parameter: 'query_editor_cub_cas_1',
+      };
+
+      await service.killTransaction(mockUserId, mockHostUid, mockDbname, request);
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'killtransaction',
+          token: mockHost.token,
+          dbname: mockDbname,
+          type: 'p',
+          parameter: 'query_editor_cub_cas_1',
+        })
+      );
+    });
+
+    it('should successfully kill transaction by host', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: KillTransactionRequest = {
+        type: 'h',
+        parameter: 'lgj1089-3-60',
+      };
+
+      await service.killTransaction(mockUserId, mockHostUid, mockDbname, request);
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'killtransaction',
+          token: mockHost.token,
+          dbname: mockDbname,
+          type: 'h',
+          parameter: 'lgj1089-3-60',
+        })
+      );
+    });
+
+    it('should throw DatabaseError if parameter is missing for type i', async () => {
+      const request: KillTransactionRequest = {
+        type: 'i',
+      };
+
+      await expect(
+        service.killTransaction(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if parameter is missing for type p', async () => {
+      const request: KillTransactionRequest = {
+        type: 'p',
+      };
+
+      await expect(
+        service.killTransaction(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if parameter is missing for type h', async () => {
+      const request: KillTransactionRequest = {
+        type: 'h',
+      };
+
+      await expect(
+        service.killTransaction(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+      const request: KillTransactionRequest = {
+        type: 'i',
+        parameter: '1',
+      };
+
+      await expect(
+        service.killTransaction(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(HostError);
+    });
+
+    it('should throw CmsError if CMS request fails', async () => {
+      cmsClient.postAuthenticated.mockRejectedValue(
+        CmsError.RequestFailed({ message: 'CMS request failed' })
+      );
+      const request: KillTransactionRequest = {
+        type: 'i',
+        parameter: '1',
+      };
+
+      await expect(
+        service.killTransaction(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(CmsError);
+    });
+
+    it('should throw DatabaseError if CMS token error occurs', async () => {
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: KillTransactionRequest = {
+        type: 'i',
+        parameter: '1',
+      };
+
+      await expect(
+        service.killTransaction(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: KillTransactionRequest = {
+        type: 'i',
+        parameter: '1',
+      };
+
+      await expect(
+        service.killTransaction(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+  });
+
+  describe('deleteDatabase', () => {
+    const mockSuccessResponse: DeleteDatabaseCmsResponse = {
+      __EXEC_TIME: '848 ms',
+      note: 'none',
+      status: 'success',
+      task: 'deletedb',
+    };
+
+    it('should successfully delete database with delbackup "y"', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: DeleteDatabaseRequest = {
+        delbackup: 'y',
+      };
+
+      const result = await service.deleteDatabase(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      expect(hostService.findHostInternal).toHaveBeenCalledWith(mockUserId, mockHostUid);
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        `https://${mockHost.address}:${mockHost.port}/cm_api`,
+        {
+          task: 'deletedb',
+          token: mockHost.token,
+          dbname: mockDbname,
+          delbackup: 'y',
+        }
+      );
+      expect(result).toEqual({});
+    });
+
+    it('should successfully delete database with delbackup "n"', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: DeleteDatabaseRequest = {
+        delbackup: 'n',
+      };
+
+      const result = await service.deleteDatabase(
+        mockUserId,
+        mockHostUid,
+        mockDbname,
+        request
+      );
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          task: 'deletedb',
+          delbackup: 'n',
+        })
+      );
+      expect(result).toEqual({});
+    });
+
+    it('should throw HostError if host is not found', async () => {
+      hostService.findHostInternal.mockRejectedValue(
+        HostError.NoSuchHost({ hostUid: mockHostUid })
+      );
+      const request: DeleteDatabaseRequest = {
+        delbackup: 'y',
+      };
+
+      await expect(
+        service.deleteDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(HostError);
+    });
+
+    it('should throw CmsError if CMS request fails', async () => {
+      cmsClient.postAuthenticated.mockRejectedValue(
+        CmsError.RequestFailed({ message: 'CMS request failed' })
+      );
+      const request: DeleteDatabaseRequest = {
+        delbackup: 'y',
+      };
+
+      await expect(
+        service.deleteDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(CmsError);
+    });
+
+    it('should throw DatabaseError if CMS token error occurs', async () => {
+      (common.checkCmsTokenError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('Invalid CMS token');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: DeleteDatabaseRequest = {
+        delbackup: 'y',
+      };
+
+      await expect(
+        service.deleteDatabase(mockUserId, mockHostUid, mockDbname, request)
+      ).rejects.toThrow(DatabaseError);
+    });
+
+    it('should throw DatabaseError if CMS status is fail', async () => {
+      (common.checkCmsStatusError as jest.Mock).mockImplementation(() => {
+        throw DatabaseError.InvalidParameter('CMS status failed');
+      });
+      cmsClient.postAuthenticated.mockResolvedValue(mockSuccessResponse);
+      const request: DeleteDatabaseRequest = {
+        delbackup: 'y',
+      };
+
+      await expect(
+        service.deleteDatabase(mockUserId, mockHostUid, mockDbname, request)
       ).rejects.toThrow(DatabaseError);
     });
   });

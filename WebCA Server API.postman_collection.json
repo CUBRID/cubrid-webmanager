@@ -1018,6 +1018,75 @@
 					"response": []
 				},
 				{
+					"name": "Kill Transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"i\",\n  \"parameter\": \"1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/{{hostUid}}/database/kill-transaction/{{dbname}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{hostUid}}",
+								"database",
+								"kill-transaction",
+								"{{dbname}}"
+							]
+						},
+						"description": "Kill a transaction in a database or display active transactions. Returns domain-only data (CMS envelope removed).\n\n**URI:**\n```\nPOST /:hostUid/database/kill-transaction/:dbname\n```\n**Example:**\n```\nPOST /host-uid-1/database/kill-transaction/demodb\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\nContent-Type: application/json\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n- `dbname` - Database name\n\n**Request Body (Required Fields):**\n```json\n{\n  \"type\": \"d\"\n}\n```\nor\n```json\n{\n  \"type\": \"i\",\n  \"parameter\": \"1\"\n}\n```\n\n**Request Body Field Descriptions:**\n\n**`type` (Required)** - Type of operation. Must be one of the following:\n- `\"d\"` - **Display active transaction**: Display all active transactions in the database. This option does NOT kill any transactions, it only displays them. The `parameter` field is **NOT required** for this type.\n- `\"i\"` - **Kill by transaction index**: Kill a specific transaction by its transaction index. The `parameter` field is **REQUIRED** for this type and must contain the transaction index as a string (e.g., `\"1\"`, `\"2\"`).\n- `\"p\"` - **Kill by process name**: Kill all transactions that have the specified process name. The `parameter` field is **REQUIRED** for this type and must contain the process name as a string (e.g., `\"query_editor_cub_cas_1\"`).\n- `\"h\"` - **Kill by host name**: Kill all transactions from a specific host. The `parameter` field is **REQUIRED** for this type and must contain the host name as a string (e.g., `\"lgj1089-3-60\"`).\n\n**`parameter` (Conditionally Required)** - Parameter value for the operation:\n- **For type `\"d\"`**: NOT required. Omit this field or leave it empty.\n- **For type `\"i\"`**: REQUIRED. Must be a string containing the transaction index (e.g., `\"1\"`, `\"2\"`, `\"3\"`). This will kill the transaction with the specified index.\n- **For type `\"p\"`**: REQUIRED. Must be a string containing the process name (e.g., `\"query_editor_cub_cas_1\"`, `\"csql\"`). This will kill all transactions that have the specified process name.\n- **For type `\"h\"`**: REQUIRED. Must be a string containing the host name (e.g., `\"lgj1089-3-60\"`, `\"hostname\"`). This will kill all transactions from the specified host.\n\n**Option Requirements Summary:**\n| Type | Description | Parameter Required | Parameter Type | Example Parameter Value |\n|------|-------------|-------------------|----------------|------------------------|\n| `\"d\"` | Display active transaction | ❌ No | N/A | N/A |\n| `\"i\"` | Kill transaction by transaction index | ✅ Yes | Transaction index (string) | `\"1\"`, `\"2\"` |\n| `\"p\"` | Kill all transactions with specified process name | ✅ Yes | Process name (string) | `\"query_editor_cub_cas_1\"` |\n| `\"h\"` | Kill all transactions from specified host | ✅ Yes | Host name (string) | `\"lgj1089-3-60\"` |\n\n**Example Request Bodies:**\n\n**1. Display active transactions (type 'd'):**\n```json\n{\n  \"type\": \"d\"\n}\n```\nNote: This does NOT kill any transactions, it only displays all active transactions in the database. The `parameter` field is not included.\n\n**2. Kill by transaction index (type 'i'):**\n```json\n{\n  \"type\": \"i\",\n  \"parameter\": \"1\"\n}\n```\nThis will kill the transaction with index \"1\".\n\n**3. Kill by process name (type 'p'):**\n```json\n{\n  \"type\": \"p\",\n  \"parameter\": \"query_editor_cub_cas_1\"\n}\n```\nThis will kill all transactions that have the process name \"query_editor_cub_cas_1\".\n\n**4. Kill by host name (type 'h'):**\n```json\n{\n  \"type\": \"h\",\n  \"parameter\": \"lgj1089-3-60\"\n}\n```\nThis will kill all transactions from the host \"lgj1089-3-60\".\n\n**Success Response (200 OK):**\n```json\n{\n  \"dbname\": \"demodb\",\n  \"transactioninfo\": [\n    {\n      \"transaction\": [\n        {\n          \"@user\": \"DBA\",\n          \"SQL_ID\": \"empty\",\n          \"host\": \"lgj1089-3-60\",\n          \"pid\": \"2782204\",\n          \"program\": \"query_editor_cub_cas_1\",\n          \"query_time\": \"0.00\",\n          \"tran_time\": \"0.00\",\n          \"tranindex\": \"1(ACTIVE)\",\n          \"wait_for_lock_holder\": \"-1\"\n        }\n      ]\n    }\n  ]\n}\n```\n\n**Response Field Descriptions:**\n- `dbname` - Database name\n- `transactioninfo` - Array of transaction information containers\n  - `transaction` - Array of transaction entries\n    - `@user` - User name\n    - `SQL_ID` - SQL ID\n    - `host` - Host name\n    - `pid` - Process ID\n    - `program` - Program name (process name)\n    - `query_time` - Query time\n    - `tran_time` - Transaction time\n    - `tranindex` - Transaction index (may include status like \"ACTIVE\")\n    - `wait_for_lock_holder` - Wait for lock holder\n\n**Error Response (400 Bad Request - Missing type):**\n```json\n{\n  \"statusCode\": 400,\n  \"message\": \"Missing required fields: type\",\n  \"error\": \"Bad Request\"\n}\n```\n\n**Error Response (400 Bad Request - Missing parameter for type 'i', 'p', or 'h'):**\n```json\n{\n  \"statusCode\": 400,\n  \"message\": \"Missing required fields: parameter\",\n  \"error\": \"Bad Request\"\n}\n```\nThis error occurs when `type` is set to `\"i\"`, `\"p\"`, or `\"h\"` but the `parameter` field is missing or empty.\n\n**Error Response (400 Bad Request - Invalid parameter requirement):**\n```json\n{\n  \"statusCode\": 400,\n  \"message\": \"Parameter is required for type 'i'\",\n  \"error\": \"Bad Request\"\n}\n```\nThis error occurs when a type that requires a parameter (i, p, h) is used without providing the parameter.\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Host not found\",\n  \"error\": \"Not Found\"\n}\n```\n\n**Error Response (500 Internal Server Error):**\n```json\n{\n  \"statusCode\": 500,\n  \"message\": \"Failed to kill transaction\",\n  \"error\": \"Internal Server Error\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Database",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"delbackup\": \"y\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/{{hostUid}}/database/{{dbname}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{hostUid}}",
+								"database",
+								"{{dbname}}"
+							]
+						},
+						"description": "Delete a database. Also removes the database name from the server parameter in cubridconf if it exists. Returns empty object on success.\n\n**URI:**\n```\nDELETE /:hostUid/database/:dbname\n```\n**Example:**\n```\nDELETE /host-uid-1/database/test\n```\n\n**Authentication:** Required\n**Headers:**\n```\nAuthorization: Bearer <JWT_TOKEN>\nContent-Type: application/json\n```\n\n**Path Parameters:**\n- `hostUid` - Host unique identifier\n- `dbname` - Database name to delete\n\n**Request Body (Required Fields):**\n```json\n{\n  \"delbackup\": \"y\"\n}\n```\n\n**Request Body Field Descriptions:**\n- `delbackup` - Delete backup option (`y` = delete backup, `n` = keep backup)\n\n**Behavior:**\n1. Deletes the database using the CMS deletedb task.\n2. After successful deletion, automatically removes the database name from the `server` parameter in the `[service]` section of the `cubridconf` configuration file if it exists.\n3. If the database name is not found in the server parameter, the operation continues without error.\n\n**Success Response (200 OK):**\n```json\n{}\n```\n\n**Error Response (400 Bad Request):**\n```json\n{\n  \"statusCode\": 400,\n  \"message\": \"Missing required fields: delbackup\",\n  \"error\": \"Bad Request\"\n}\n```\n\n**Error Response (404 Not Found):**\n```json\n{\n  \"statusCode\": 404,\n  \"message\": \"Host not found\",\n  \"error\": \"Not Found\"\n}\n```\n\n**Error Response (500 Internal Server Error):**\n```json\n{\n  \"statusCode\": 500,\n  \"message\": \"Failed to delete database\",\n  \"error\": \"Internal Server Error\"\n}\n```"
+					},
+					"response": []
+				},
+				{
 					"name": "Compact Database",
 					"request": {
 						"method": "POST",

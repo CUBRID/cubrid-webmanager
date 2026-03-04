@@ -38,8 +38,11 @@ export class ValidationError extends AppError {
    */
   static MissingRequiredField(fieldNames: string | string[], additionalData?: Record<string, any>) {
     const fields = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+    const endpoint = additionalData?.endpoint || 'unknown';
+    const fieldsList = fields.join(', ');
     return new ValidationError('VALIDATION', ValidationErrorCode.MISSING_REQUIRED_FIELD, {
       missingFields: fields,
+      message: `Missing required field(s): ${fieldsList}. Endpoint: ${endpoint}`,
       ...additionalData,
     });
   }

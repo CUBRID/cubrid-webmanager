@@ -447,14 +447,15 @@ export class DatabaseLifecycleService {
     const cmsExvol = request.exvol ? convertExvolArrayToCmsFormat(request.exvol) : [];
 
     // Build CMS request from client request
+    // Convert numeric values to strings as CMS expects string format
     const cmsRequest: CreateDatabaseCmsRequest = {
       task: 'createdb',
       token: host.token || '',
       dbname: request.dbname,
-      numpage: request.numpage,
-      pagesize: request.pagesize,
-      logsize: request.logsize,
-      logpagesize: request.logpagesize,
+      numpage: String(request.numpage),
+      pagesize: String(request.pagesize),
+      logsize: String(request.logsize),
+      logpagesize: String(request.logpagesize),
       genvolpath: request.genvolpath,
       logvolpath: request.logvolpath,
       exvol: cmsExvol,
@@ -506,6 +507,25 @@ export class DatabaseLifecycleService {
         success: true,
         data: createDatabaseResult,
       };
+
+      // 1-1. Start database after successful creation
+      try {
+        const startInfo = await this.startDatabase(userId, hostUid, createDbRequest.dbname);
+        response.startDatabase = {
+          success: true,
+          data: startInfo,
+        };
+      } catch (error: any) {
+        this.logger.error(`Failed to start database: ${error.message}`, error.stack);
+        response.startDatabase = {
+          success: false,
+          error: {
+            message: error.message || 'Failed to start database',
+            code: error.code || error.name,
+            details: error.details,
+          },
+        };
+      }
     } catch (error: any) {
       this.logger.error(`Failed to create database: ${error.message}`, error.stack);
       response.createDatabase = {

@@ -24,6 +24,7 @@ import CopyDB from './components/modal/DatabaseManagement/CopyDB';
 import AddVolume from './components/modal/DatabaseSpace/AddVolume';
 import SetAutoVolume from './components/modal/DatabaseSpace/SetAutoVolume';
 import UnloadDB from './components/modal/UnloadDB/UnloadDB';
+import AutoQueryLog from './components/modal/QueryPlanModal/AutoQueryLog';
 import AutoBackupLog from './components/modal/BackupModal/AutoBackupLog';
 import LockInformation from './components/modal/DatabaseInfo/LockInformation';
 import LoadDB from './components/modal/LoadDB/LoadDB';
@@ -51,6 +52,7 @@ const SideNav = () => {
       <AddVolume />
       <SetAutoVolume />
       <UnloadDB/>
+      <AutoQueryLog />
       <AutoBackupLog/>
       <LockInformation />
       <LoadDB/>

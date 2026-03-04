@@ -1,3 +1,5 @@
+import { StartInfoClientResponse } from './database-client-response';
+
 /**
  * Result type for individual operation in create database with config workflow.
  *
@@ -48,6 +50,12 @@ export type CreateDatabaseWithConfigResponse = {
    * Result from database creation
    */
   createDatabase: OperationResult;
+
+  /**
+   * Result from starting database after creation
+   * Contains start info with database list and active list
+   */
+  startDatabase?: OperationResult<StartInfoClientResponse>;
 
   /**
    * Result from user update (if requested)
