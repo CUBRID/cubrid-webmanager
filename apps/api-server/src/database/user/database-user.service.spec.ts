@@ -144,7 +144,7 @@ describe('DatabaseUserService', () => {
           authorization: [],
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should throw DatabaseError when CMS status is not success', async () => {
@@ -193,7 +193,7 @@ describe('DatabaseUserService', () => {
           username: 'yifan',
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should throw DatabaseError when CMS status is not success', async () => {
@@ -246,7 +246,7 @@ describe('DatabaseUserService', () => {
           authorization: [],
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should throw DatabaseError when CMS status is not success', async () => {

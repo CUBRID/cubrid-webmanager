@@ -1,8 +1,9 @@
+import type { CmsSuccessClientResponse } from './cms-success-client-response';
+
 /**
- * Client-facing response for setting system parameters.
- * Returns empty object on success (CMS envelope fields removed).
+ * Client-facing response for setting system parameters (CMS envelope fields removed).
  *
  * @category Responses
  * @since 1.0.0
  */
-export type SetSysParamClientResponse = Record<string, never>;
+export type SetSysParamClientResponse = CmsSuccessClientResponse;

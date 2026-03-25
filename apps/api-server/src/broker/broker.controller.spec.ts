@@ -66,6 +66,7 @@ describe('BrokerController', () => {
       expect(result).toEqual({ success: true });
     });
   });
+
   describe('addDbmtUser', () => {
     it('should call brokerService.addDbmtUser and return dblist and userlist', async () => {
       const req = { user: { sub: 'user-123' } };
@@ -113,5 +114,4 @@ describe('BrokerController', () => {
       expect(result).toEqual(mockResponse);
     });
   });
-
 });

@@ -7,6 +7,7 @@ import {
   CompactDatabaseRequest,
   CompactDatabaseResponse,
   CopyDbRequest,
+  CmsSuccessClientResponse,
   GetAddVolStatusResponse,
   LoadDatabaseRequest,
   LoadDatabaseResponse,
@@ -54,7 +55,7 @@ export class DatabaseManagementController {
     @Request() req,
     @Param('hostUid') hostUid: string,
     @Body() body: CopyDbRequest
-  ): Promise<{}> {
+  ): Promise<CmsSuccessClientResponse> {
     const userId = req.user.sub;
     validateRequiredFields(
       body,

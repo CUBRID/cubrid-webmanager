@@ -194,6 +194,6 @@ export class CmsUserService extends BaseService {
       throw CmsUserError.SetDbmtPasswdFailed({ response, targetid });
     }
 
-    return {};
+    return { success: true };
   }
 }

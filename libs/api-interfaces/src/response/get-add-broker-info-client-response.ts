@@ -1,6 +1,6 @@
 /**
  * Client-facing response for getaddbrokerinfo CMS task.
- * Returns broker config file content (conflist) and metadata.
+ * Returns broker config file content (conflist) and metadata (CMS envelope omitted).
  *
  * @category Responses
  * @since 1.0.0
@@ -10,8 +10,4 @@ export type GetAddBrokerInfoClientResponse = {
   conflist: { confdata: string[] }[];
   /** Config name (e.g. "broker") */
   confname: string;
-  /** Note from CMS (e.g. "none") */
-  note: string;
-  /** Execution time (e.g. "0 ms") */
-  execTime: string;
 };

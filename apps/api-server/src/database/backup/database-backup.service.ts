@@ -108,7 +108,7 @@ export class DatabaseBackupService extends BaseService {
       cmsRequest
     );
 
-    return {};
+    return { success: true };
   }
 
   /**
@@ -148,17 +148,13 @@ export class DatabaseBackupService extends BaseService {
       bknum: backupInfo.bknum,
     };
 
-    const response = await this.executeCmsRequest<
-      SetBackupInfoCmsRequest,
-      SetBackupInfoCmsResponse
-    >(userId, hostUid, cmsRequest);
+    await this.executeCmsRequest<SetBackupInfoCmsRequest, SetBackupInfoCmsResponse>(
+      userId,
+      hostUid,
+      cmsRequest
+    );
 
-    return {
-      __EXEC_TIME: response.__EXEC_TIME,
-      note: response.note,
-      status: response.status as 'success' | 'error',
-      task: 'setbackupinfo',
-    };
+    return { success: true };
   }
 
   /**
@@ -185,17 +181,13 @@ export class DatabaseBackupService extends BaseService {
       backupid: backupInfo.backupid,
     };
 
-    const response = await this.executeCmsRequest<
-      DeleteBackupInfoCmsRequest,
-      DeleteBackupInfoCmsResponse
-    >(userId, hostUid, cmsRequest);
+    await this.executeCmsRequest<DeleteBackupInfoCmsRequest, DeleteBackupInfoCmsResponse>(
+      userId,
+      hostUid,
+      cmsRequest
+    );
 
-    return {
-      __EXEC_TIME: response.__EXEC_TIME,
-      note: response.note,
-      status: response.status as 'success' | 'error',
-      task: 'deletebackupinfo',
-    };
+    return { success: true };
   }
 
   /**
@@ -272,10 +264,6 @@ export class DatabaseBackupService extends BaseService {
       level0: Array.isArray(response.level0) ? response.level0 : [],
       level1: Array.isArray(response.level1) ? response.level1 : [],
       level2: Array.isArray(response.level2) ? response.level2 : [],
-      note: response.note ?? 'none',
-      status: response.status ?? 'success',
-      task: response.task ?? 'backupdbinfo',
-      __EXEC_TIME: response.__EXEC_TIME,
     };
   }
 
@@ -308,13 +296,9 @@ export class DatabaseBackupService extends BaseService {
     >(userId, hostUid, cmsRequest);
 
     return {
-      __EXEC_TIME: response.__EXEC_TIME,
       level0: response.level0 ?? 'none',
       level1: response.level1 ?? 'none',
       level2: response.level2 ?? 'none',
-      note: response.note ?? 'none',
-      status: response.status ?? 'success',
-      task: response.task ?? 'getbackuplist',
     };
   }
 
@@ -325,7 +309,7 @@ export class DatabaseBackupService extends BaseService {
    * @param hostUid Host UID
    * @param dbname Database name
    * @param request Client request (level, volname, backupdir, removelog?, check?, mt?, zip?, safereplication?)
-   * @returns BackupDbClientResponse __EXEC_TIME, note, status, task
+   * @returns BackupDbClientResponse empty body on success (CMS envelope omitted)
    * @throws DatabaseError If request fails or CMS status is fail
    */
   @HandleDatabaseErrors()
@@ -350,17 +334,13 @@ export class DatabaseBackupService extends BaseService {
 
     this.logger.debug(`Executing backup for database: ${dbname} level: ${request.level}`);
 
-    const response = await this.executeCmsRequest<
-      BackupDbCmsRequest,
-      BackupDbCmsResponse
-    >(userId, hostUid, cmsRequest);
+    await this.executeCmsRequest<BackupDbCmsRequest, BackupDbCmsResponse>(
+      userId,
+      hostUid,
+      cmsRequest
+    );
 
-    return {
-      __EXEC_TIME: response.__EXEC_TIME,
-      note: response.note,
-      status: response.status as 'success' | 'error',
-      task: 'backupdb',
-    };
+    return { success: true };
   }
 
   /**
@@ -371,7 +351,7 @@ export class DatabaseBackupService extends BaseService {
    * @param hostUid Host UID
    * @param dbname Database name
    * @param request Restore information
-   * @returns RestoreDbClientResponse __EXEC_TIME, note, status, task
+   * @returns RestoreDbClientResponse empty body on success (CMS envelope omitted)
    * @throws DatabaseError If request fails or CMS status is fail
    */
   @HandleDatabaseErrors()
@@ -393,17 +373,13 @@ export class DatabaseBackupService extends BaseService {
 
     this.logger.debug(`Restoring database: ${dbname} on host: ${hostUid}`);
 
-    const response = await this.executeCmsRequest<
-      RestoreDbCmsRequest,
-      RestoreDbCmsResponse
-    >(userId, hostUid, cmsRequest);
+    await this.executeCmsRequest<RestoreDbCmsRequest, RestoreDbCmsResponse>(
+      userId,
+      hostUid,
+      cmsRequest
+    );
 
-    return {
-      __EXEC_TIME: response.__EXEC_TIME,
-      note: response.note,
-      status: response.status as 'success' | 'error',
-      task: 'restoredb',
-    };
+    return { success: true };
   }
 
   /**

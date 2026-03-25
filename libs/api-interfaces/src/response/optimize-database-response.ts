@@ -1,8 +1,9 @@
+import type { CmsSuccessClientResponse } from './cms-success-client-response';
+
 /**
- * Client response type for optimizing a database.
- * Returns empty object on success (CMS envelope removed).
+ * Client response type for optimizing a database (CMS envelope removed).
  *
  * @category Client Responses
  * @since 1.0.0
  */
-export type OptimizeDatabaseResponse = {};
+export type OptimizeDatabaseResponse = CmsSuccessClientResponse;

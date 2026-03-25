@@ -121,7 +121,7 @@ describe('DatabaseConfigService', () => {
           planlist: mockRequest.planlist,
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
   });
 
@@ -349,8 +349,6 @@ describe('DatabaseConfigService', () => {
         index: 'ON',
         index_ext_page: '32768',
         index_warn_outofspace: '0.15',
-        note: 'none',
-        execTime: '0 ms',
       });
     });
 

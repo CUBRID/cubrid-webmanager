@@ -103,7 +103,7 @@ describe('CmsUserController', () => {
   describe('setDbmtPasswd', () => {
     it('should call service.setDbmtPasswd with body', async () => {
       const body = { targetid: 'yifan', newpassword: '1111' };
-      service.setDbmtPasswd.mockResolvedValue({});
+      service.setDbmtPasswd.mockResolvedValue({ success: true });
 
       const result = await controller.setDbmtPasswd(mockReq, 'host-uid-1', body);
 
@@ -113,7 +113,7 @@ describe('CmsUserController', () => {
         'yifan',
         '1111'
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
   });
 });

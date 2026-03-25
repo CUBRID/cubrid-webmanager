@@ -6,6 +6,7 @@ import { Injectable } from '@nestjs/common';
 import {
   AddDbmtUserClientResponse,
   AddDbmtUserRequest,
+  BrokerStartStopClientResponse,
   GetBrokerStatusClientResponse,
   StartAllBrokersClientResponse,
   StopAllBrokersClientResponse,
@@ -145,41 +146,47 @@ export class BrokerService extends BaseService {
   }
 
   @HandleBrokerErrors()
-  async stopBroker(userId: string, hostUid: string, bname: string): Promise<BaseCmsResponse> {
+  async stopBroker(
+    userId: string,
+    hostUid: string,
+    bname: string
+  ): Promise<BrokerStartStopClientResponse> {
     const cmsRequest: HandleBrokerCmsRequest = {
       task: 'broker_stop',
       bname: bname,
     };
 
-    const response = await this.executeCmsRequest<HandleBrokerCmsRequest, BaseCmsResponse>(
-      userId,
-      hostUid,
-      cmsRequest
-    );
+    const response = await this.executeCmsRequest<
+      HandleBrokerCmsRequest,
+      import('@type/cms-response/base-cms-response').BaseCmsResponse
+    >(userId, hostUid, cmsRequest);
 
     if (response.status !== 'success') {
       throw BrokerError.BrokerStopFailed();
     }
-    return response;
+    return { success: true };
   }
 
   @HandleBrokerErrors()
-  async startBroker(userId: string, hostUid: string, bname: string): Promise<BaseCmsResponse> {
+  async startBroker(
+    userId: string,
+    hostUid: string,
+    bname: string
+  ): Promise<BrokerStartStopClientResponse> {
     const cmsRequest: HandleBrokerCmsRequest = {
       task: 'broker_start',
       bname: bname,
     };
 
-    const response = await this.executeCmsRequest<HandleBrokerCmsRequest, BaseCmsResponse>(
-      userId,
-      hostUid,
-      cmsRequest
-    );
+    const response = await this.executeCmsRequest<
+      HandleBrokerCmsRequest,
+      import('@type/cms-response/base-cms-response').BaseCmsResponse
+    >(userId, hostUid, cmsRequest);
 
     if (response.status !== 'success') {
       throw BrokerError.BrokerStartFailed();
     }
-    return response;
+    return { success: true };
   }
 
   @HandleBrokerErrors()
@@ -189,11 +196,10 @@ export class BrokerService extends BaseService {
       bname: bname,
     };
 
-    const stopResponse = await this.executeCmsRequest<HandleBrokerCmsRequest, BaseCmsResponse>(
-      userId,
-      hostUid,
-      stopRequest
-    );
+    const stopResponse = await this.executeCmsRequest<
+      HandleBrokerCmsRequest,
+      BaseCmsResponse
+    >(userId, hostUid, stopRequest);
     if (stopResponse.status === 'success') {
       const startRequest: HandleBrokerCmsRequest = {
         task: 'broker_start',

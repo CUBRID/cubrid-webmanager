@@ -1,4 +1,9 @@
 import {
+  CreateDbUserResponse,
+  DeleteDbUserResponse,
+  UpdateDbUserResponse,
+} from '@api-interfaces';
+import {
   BaseService,
   HandleCmsHttpsClientErrors,
   HandleDatabaseErrors,
@@ -123,7 +128,7 @@ export class DatabaseUserService extends BaseService {
     userpass: string,
     groups: { group: string[] },
     authorization: string[]
-  ): Promise<{}> {
+  ): Promise<UpdateDbUserResponse> {
     const cmsRequest: UpdateUserCmsRequest = {
       task: 'updateuser',
       dbname,
@@ -142,7 +147,7 @@ export class DatabaseUserService extends BaseService {
       throw DatabaseError.InternalError({ response, dbname, username });
     }
 
-    return {};
+    return { success: true };
   }
 
   /**
@@ -187,7 +192,7 @@ export class DatabaseUserService extends BaseService {
     userpass: string,
     groups: { group: string[] },
     authorization: unknown[]
-  ): Promise<Record<string, never>> {
+  ): Promise<CreateDbUserResponse> {
     const cmsRequest: CreateUserCmsRequest = {
       task: 'createuser',
       dbname,
@@ -206,7 +211,7 @@ export class DatabaseUserService extends BaseService {
       throw DatabaseError.CreateUserFailed({ response, dbname, username });
     }
 
-    return {};
+    return { success: true };
   }
 
   /**
@@ -220,7 +225,7 @@ export class DatabaseUserService extends BaseService {
     hostUid: string,
     dbname: string,
     username: string
-  ): Promise<Record<string, never>> {
+  ): Promise<DeleteDbUserResponse> {
     const cmsRequest: DeleteUserCmsRequest = {
       task: 'deleteuser',
       dbname,
@@ -236,7 +241,7 @@ export class DatabaseUserService extends BaseService {
       throw DatabaseError.DeleteUserFailed({ response, dbname, username });
     }
 
-    return {};
+    return { success: true };
   }
 
   /**

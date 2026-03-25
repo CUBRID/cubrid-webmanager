@@ -490,7 +490,7 @@ describe('DatabaseManagementService', () => {
       );
       expect(common.checkCmsTokenError).toHaveBeenCalledWith(mockSuccessResponse);
       expect(common.checkCmsStatusError).toHaveBeenCalledWith(mockSuccessResponse);
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should include all request fields in CMS request', async () => {
@@ -702,7 +702,7 @@ describe('DatabaseManagementService', () => {
       );
       expect(common.checkCmsTokenError).toHaveBeenCalledWith(mockSuccessResponse);
       expect(common.checkCmsStatusError).toHaveBeenCalledWith(mockSuccessResponse);
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should successfully check database with repairdb "y"', async () => {
@@ -722,7 +722,7 @@ describe('DatabaseManagementService', () => {
           repairdb: 'y',
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should throw HostError if host is not found', async () => {
@@ -823,6 +823,7 @@ describe('DatabaseManagementService', () => {
       expect(common.checkCmsTokenError).toHaveBeenCalledWith(mockSuccessResponseWithLog);
       expect(common.checkCmsStatusError).toHaveBeenCalledWith(mockSuccessResponseWithLog);
       expect(result).toEqual({
+        success: true,
         log: mockSuccessResponseWithLog.log,
       });
     });
@@ -844,7 +845,7 @@ describe('DatabaseManagementService', () => {
           verbose: 'n',
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should throw HostError if host is not found', async () => {

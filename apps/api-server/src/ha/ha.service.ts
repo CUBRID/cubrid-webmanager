@@ -36,19 +36,15 @@ export class HaService extends BaseService {
       HeartbeatListCmsResponse
     >(userId, hostUid, cmsRequest);
 
-    const hadbinfolist = Array.isArray(response.hadbinfolist)
-      ? response.hadbinfolist
-      : (response.hadbinfolist ?? {});
+    const data = this.extractDomainData(response);
+    const hadbinfolist = Array.isArray(data.hadbinfolist)
+      ? data.hadbinfolist
+      : (data.hadbinfolist ?? {});
 
     return {
-      __EXEC_TIME: response.__EXEC_TIME,
-      currentnode: response.currentnode,
-      currentnodestate: response.currentnodestate,
+      ...data,
       hadbinfolist,
-      hanodelist: response.hanodelist ?? [],
-      note: response.note ?? 'none',
-      status: response.status ?? 'success',
-      task: response.task ?? 'heartbeatlist',
+      hanodelist: data.hanodelist ?? [],
     };
   }
 

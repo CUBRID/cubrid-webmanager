@@ -235,7 +235,7 @@ describe('CmsUserService', () => {
   });
 
   describe('setDbmtPasswd', () => {
-    it('should send setdbmtpasswd and return {}', async () => {
+    it('should send setdbmtpasswd and return { success: true }', async () => {
       cmsClient.postAuthenticated.mockResolvedValue({
         __EXEC_TIME: '72 ms',
         note: 'none',
@@ -258,7 +258,7 @@ describe('CmsUserService', () => {
           newpassword: '1111',
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
 
     it('should throw CmsUserError when status is not success', async () => {

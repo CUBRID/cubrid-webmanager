@@ -97,7 +97,7 @@ export class DatabaseConfigService extends BaseService {
       cmsRequest
     );
 
-    return {};
+    return { success: true };
   }
 
   /**
@@ -387,7 +387,7 @@ export class DatabaseConfigService extends BaseService {
       cmsRequest
     );
 
-    return {};
+    return { success: true };
   }
 
   /**
@@ -430,7 +430,7 @@ export class DatabaseConfigService extends BaseService {
    * @param userId User ID from JWT
    * @param hostUid Host UID
    * @param dbname Database name
-   * @returns GetAutoAddVolClientResponse data, data_ext_page, data_warn_outofspace, index, index_ext_page, index_warn_outofspace, note, execTime
+   * @returns GetAutoAddVolClientResponse volume fields only (CMS envelope omitted)
    */
   @HandleDatabaseErrors()
   async getAutoAddVol(
@@ -457,8 +457,6 @@ export class DatabaseConfigService extends BaseService {
         index: cms.index,
         index_ext_page: cms.index_ext_page,
         index_warn_outofspace: cms.index_warn_outofspace,
-        note: cms.note,
-        execTime: cms.__EXEC_TIME,
       };
     }
 

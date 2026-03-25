@@ -37,8 +37,6 @@ describe('CmsConfigController', () => {
       const mockResponse = {
         conflist: [{ confdata: ['[broker]', 'SERVICE = ON'] }],
         confname: 'broker',
-        note: 'none',
-        execTime: '0 ms',
       };
       cmsConfigService.getAddBrokerInfo.mockResolvedValue(mockResponse);
 
@@ -59,8 +57,8 @@ describe('CmsConfigController', () => {
   });
 
   describe('setBrokerParam', () => {
-    it('should call cmsConfigService.setBrokerParam and return {}', async () => {
-      cmsConfigService.setBrokerParam.mockResolvedValue({});
+    it('should call cmsConfigService.setBrokerParam and return { success: true }', async () => {
+      cmsConfigService.setBrokerParam.mockResolvedValue({ success: true });
 
       const req = { user: { sub: 'user-123' } };
       const body = { confdata: ['[broker]', 'SERVICE=ON'] };
@@ -71,7 +69,7 @@ describe('CmsConfigController', () => {
         'host-uid-1',
         body.confdata
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
   });
 });

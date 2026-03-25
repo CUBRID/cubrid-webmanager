@@ -1,4 +1,5 @@
 // Response exports
+export * from './cms-success-client-response';
 export * from './db-response';
 export * from './get-dbs-response';
 export * from './get-hosts-response';

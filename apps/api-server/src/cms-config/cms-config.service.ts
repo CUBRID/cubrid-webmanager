@@ -209,17 +209,17 @@ export class CmsConfigService extends BaseService {
       cmsRequest
     );
 
-    return {};
+    return { success: true };
   }
 
   /**
    * Get broker config file content from a CMS host (CMS task: getaddbrokerinfo).
-   * Returns conflist (config lines), confname, note, execTime.
+   * Returns conflist (config lines) and confname (CMS envelope omitted).
    *
    * @param userId - User ID from JWT
    * @param hostUid - Host unique identifier
    * @param confname - Config name (e.g. "brokerconf")
-   * @returns GetAddBrokerInfoClientResponse conflist, confname, note, execTime
+   * @returns GetAddBrokerInfoClientResponse conflist, confname
    */
   @HandleCmsConfigErrors()
   async getAddBrokerInfo(
@@ -242,8 +242,6 @@ export class CmsConfigService extends BaseService {
       return {
         conflist: cms.conflist,
         confname: cms.confname,
-        note: cms.note,
-        execTime: cms.__EXEC_TIME,
       };
     }
 
@@ -282,6 +280,6 @@ export class CmsConfigService extends BaseService {
       });
     }
 
-    return {};
+    return { success: true };
   }
 }

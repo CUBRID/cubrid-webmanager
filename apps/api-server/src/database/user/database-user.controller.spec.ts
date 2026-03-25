@@ -98,7 +98,7 @@ describe('DatabaseUserController', () => {
         groups: { group: ['public'] },
         authorization: [],
       };
-      service.createUser.mockResolvedValue({});
+      service.createUser.mockResolvedValue({ success: true });
 
       const result = await controller.createUser(mockReq, 'host-uid-1', body);
 
@@ -111,13 +111,13 @@ describe('DatabaseUserController', () => {
         body.groups,
         body.authorization
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
   });
 
   describe('deleteUser', () => {
     it('should call service.deleteUser and return empty object', async () => {
-      service.deleteUser.mockResolvedValue({});
+      service.deleteUser.mockResolvedValue({ success: true });
 
       const result = await controller.deleteUser(
         mockReq,
@@ -132,7 +132,7 @@ describe('DatabaseUserController', () => {
         'demodb',
         'yifan'
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
   });
 
@@ -143,7 +143,7 @@ describe('DatabaseUserController', () => {
         groups: { group: ['public'] },
         authorization: [],
       };
-      service.updateUser.mockResolvedValue({});
+      service.updateUser.mockResolvedValue({ success: true });
 
       const result = await controller.updateUser(
         mockReq,
@@ -162,7 +162,7 @@ describe('DatabaseUserController', () => {
         body.groups,
         body.authorization
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
   });
 

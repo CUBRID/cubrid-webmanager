@@ -1,4 +1,6 @@
+import type { CmsSuccessClientResponse } from './cms-success-client-response';
+
 /**
- * Client response for createuser (success = empty object).
+ * Client response for createuser (CMS envelope removed).
  */
-export type CreateDbUserResponse = Record<string, never>;
+export type CreateDbUserResponse = CmsSuccessClientResponse;

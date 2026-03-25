@@ -42,16 +42,12 @@ export type HaNodeClientItem = {
 };
 
 /**
- * Client response type for heartbeatlist task.
+ * Client response for heartbeatlist (domain fields only; CMS envelope stripped).
  */
 export type HeartbeatListClientResponse = {
-  __EXEC_TIME?: string;
   currentnode?: string;
   currentnodestate?: string;
   hadbinfolist?: Array<{ server: HaServerClientItem[] }> | Record<string, never>;
   hanodelist?: Array<{ node: HaNodeClientItem[] }>;
-  note: string;
-  status: string;
-  task: string;
 };
 

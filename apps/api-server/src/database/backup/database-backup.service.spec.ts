@@ -124,7 +124,7 @@ describe('DatabaseBackupService', () => {
           path: mockRequest.path,
         })
       );
-      expect(result).toEqual({});
+      expect(result).toEqual({ success: true });
     });
   });
 
@@ -171,12 +171,7 @@ describe('DatabaseBackupService', () => {
           dbname: mockDbname,
         })
       );
-      expect(result).toEqual({
-        __EXEC_TIME: '10 ms',
-        note: 'none',
-        status: 'success',
-        task: 'setbackupinfo',
-      });
+      expect(result).toEqual({ success: true });
     });
   });
 
@@ -211,7 +206,7 @@ describe('DatabaseBackupService', () => {
           backupid: mockRequest.backupid,
         })
       );
-      expect(result).toBeDefined();
+      expect(result).toEqual({ success: true });
     });
   });
 
@@ -294,15 +289,11 @@ describe('DatabaseBackupService', () => {
         })
       );
       expect(result).toMatchObject({
-        __EXEC_TIME: '19 ms',
         dbdir: mockResponse.dbdir,
         freespace: mockResponse.freespace,
         level0: mockResponse.level0,
         level1: mockResponse.level1,
         level2: mockResponse.level2,
-        note: mockResponse.note,
-        status: mockResponse.status,
-        task: mockResponse.task,
       });
     });
 
@@ -414,12 +405,7 @@ describe('DatabaseBackupService', () => {
           safereplication: 'n',
         })
       );
-      expect(result).toEqual({
-        __EXEC_TIME: '1412 ms',
-        note: 'none',
-        status: 'success',
-        task: 'backupdb',
-      });
+      expect(result).toEqual({ success: true });
     });
 
     it('should use default options when optional fields omitted', async () => {
@@ -494,12 +480,7 @@ describe('DatabaseBackupService', () => {
         })
       );
 
-      expect(result).toEqual({
-        __EXEC_TIME: '6661 ms',
-        note: 'none',
-        status: 'success',
-        task: 'restoredb',
-      });
+      expect(result).toEqual({ success: true });
     });
   });
 

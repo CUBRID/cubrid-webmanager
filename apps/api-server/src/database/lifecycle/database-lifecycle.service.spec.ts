@@ -513,7 +513,9 @@ describe('DatabaseLifecycleService', () => {
       overwrite_config_file: 'YES' as const,
     };
 
-    const mockCreateDatabaseResponse: CreateDatabaseClientResponse = {};
+    const mockCreateDatabaseResponse: CreateDatabaseClientResponse = {
+      success: true,
+    };
 
     const mockStartInfoForCreate = { activelist: { active: [] }, dblist: { dbs: [] } };
 
@@ -526,9 +528,9 @@ describe('DatabaseLifecycleService', () => {
         status: 'success',
         task: 'startdb',
       });
-      databaseUserService.updateUser.mockResolvedValue({});
-      databaseConfigService.setAutoAddVol.mockResolvedValue({});
-      databaseConfigService.setAutoStart.mockResolvedValue({});
+      databaseUserService.updateUser.mockResolvedValue({ success: true });
+      databaseConfigService.setAutoAddVol.mockResolvedValue({ success: true });
+      databaseConfigService.setAutoStart.mockResolvedValue({ success: true });
     });
 
     it('should successfully create database without optional configuration', async () => {

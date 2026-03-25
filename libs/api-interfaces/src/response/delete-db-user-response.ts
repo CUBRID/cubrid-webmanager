@@ -1,4 +1,6 @@
+import type { CmsSuccessClientResponse } from './cms-success-client-response';
+
 /**
- * Client response for deleteuser (success = empty object).
+ * Client response for deleteuser (CMS envelope removed).
  */
-export type DeleteDbUserResponse = Record<string, never>;
+export type DeleteDbUserResponse = CmsSuccessClientResponse;

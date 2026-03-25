@@ -26,8 +26,4 @@ export type BackupDbInfoClientResponse = {
   level0: BackupLevelEntry[];
   level1: BackupLevelEntry[];
   level2: BackupLevelEntry[];
-  note: string;
-  status: string;
-  task: string;
-  __EXEC_TIME?: string;
 };

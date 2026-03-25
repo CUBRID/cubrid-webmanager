@@ -111,14 +111,14 @@ export class DatabaseBackupController {
 
   /**
    * Delete automated backup schedule information for a database.
-   * Returns response with execution details.
+   * Returns empty object on success (CMS envelope omitted).
    *
    * @route DELETE /:hostUid/database/backup-schedule/:dbname
    * @param req Express request (contains authenticated user)
    * @param hostUid Host unique identifier from path parameter
    * @param dbname Database name from path parameter
    * @param body Request body containing backup ID to delete
-   * @returns DeleteBackupInfoClientResponse Response with execution details
+   * @returns DeleteBackupInfoClientResponse empty on success
    * @example
    * // DELETE /host-uid/database/backup-schedule/demodb
    * // Body: { "backupid": "t2" }
@@ -214,7 +214,7 @@ export class DatabaseBackupController {
    * @param hostUid Host unique identifier from path parameter
    * @param dbname Database name from path parameter
    * @param body Request body: level, volname, backupdir, removelog?, check?, mt?, zip?, safereplication?
-   * @returns BackupDbClientResponse __EXEC_TIME, note, status, task
+   * @returns BackupDbClientResponse empty body on success (CMS envelope omitted)
    * @example
    * // POST /host-uid/database/backup-db/demodb
    * // Body: { "level": "0", "volname": "demodb_backup_lv0", "backupdir": "/path/to/backup", "removelog": "y", "check": "y", "mt": "2", "zip": "y", "safereplication": "n" }
