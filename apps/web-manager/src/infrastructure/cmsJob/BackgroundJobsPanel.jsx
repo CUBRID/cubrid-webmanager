@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useSelector, shallowEqual } from 'react-redux';
 import { Icon } from '../../components/ds/foundation/Icon';
 import { Typography } from '../../components/ds/foundation/Typography';
 import { useCM } from '../../constants/useCM';
+import { stripHaRoleTagFromAlias } from '../../features/host/hostGroupUtils';
 import {
   getCmsJobTypeLabel,
   getCmsJobStatusLabel,
@@ -62,54 +64,109 @@ function StatusBadge({ status, CM }) {
   );
 }
 
-function JobRow({ job, CM, onDismiss }) {
+function formatTimestamp(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
+function JobDetail({ job, CM, hostLabel }) {
+  return (
+    <div className="px-3 pb-2.5 -mt-0.5 space-y-1.5 text-[10.5px] text-slate-500 dark:text-slate-400">
+      <div className="grid grid-cols-[70px_1fr] gap-x-2">
+        <span className="text-slate-400 dark:text-slate-500">{CM.server}</span>
+        <span className="text-slate-700 dark:text-slate-300 truncate">{hostLabel || '—'}</span>
+        <span className="text-slate-400 dark:text-slate-500">{CM.database}</span>
+        <span className="text-slate-700 dark:text-slate-300 truncate">{job.dbname || '—'}</span>
+        <span className="text-slate-400 dark:text-slate-500">{CM.created}</span>
+        <span className="text-slate-700 dark:text-slate-300 tabular-nums">{formatTimestamp(job.createdAt)}</span>
+        {job.startedAt && (
+          <>
+            <span className="text-slate-400 dark:text-slate-500">{CM.started}</span>
+            <span className="text-slate-700 dark:text-slate-300 tabular-nums">{formatTimestamp(job.startedAt)}</span>
+          </>
+        )}
+        {job.finishedAt && (
+          <>
+            <span className="text-slate-400 dark:text-slate-500">{CM.finished}</span>
+            <span className="text-slate-700 dark:text-slate-300 tabular-nums">{formatTimestamp(job.finishedAt)}</span>
+          </>
+        )}
+      </div>
+      {job.error?.message && (
+        <div>
+          <div className="text-slate-400 dark:text-slate-500 mb-0.5">{CM.error}</div>
+          <pre className="whitespace-pre-wrap break-all bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded px-2 py-1.5 font-mono text-[10px]">
+            {job.error.message}
+          </pre>
+        </div>
+      )}
+      {job.result != null && (
+        <div>
+          <div className="text-slate-400 dark:text-slate-500 mb-0.5">{CM.result}</div>
+          <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-white/5 rounded px-2 py-1.5 font-mono text-[10px] max-h-40 overflow-y-auto">
+            {typeof job.result === 'string' ? job.result : JSON.stringify(job.result, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JobRow({ job, CM, hostLabel, isExpanded, onToggle, onDismiss }) {
   const isActive = job.jobStatus === 'queued' || job.jobStatus === 'running';
   const op = getCmsJobTypeLabel(job.type, CM);
   const anchorAt = job.startedAt || job.createdAt;
   const elapsed = useElapsedTime(anchorAt, isActive);
 
   return (
-    <li className="flex items-start gap-2 px-3 py-2 border-b border-slate-100 dark:border-white/5 last:border-0">
-      <div className="mt-0.5 shrink-0">
-        {isActive ? (
-          <Icon name="sync" className="text-amber-500 animate-spin" size="sm" weight={300} />
-        ) : job.jobStatus === 'succeeded' ? (
-          <Icon name="check_circle" className="text-green-500" size="sm" weight={300} />
-        ) : (
-          <Icon name="error" className="text-red-500" size="sm" weight={300} />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <Typography variant="p" className="text-[12px] font-medium text-slate-800 dark:text-slate-100 truncate">
-          {op}
-        </Typography>
-        <Typography variant="p" className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-          {job.dbname || '—'}
-        </Typography>
-        {isActive && anchorAt && (
-          <Typography variant="p" className="text-[10px] text-amber-600 dark:text-amber-400 tabular-nums">
-            {formatElapsed(elapsed)}
+    <li className="border-b border-slate-100 dark:border-white/5 last:border-0">
+      <div
+        className="flex items-start gap-2 px-3 py-2 cursor-pointer hover:bg-slate-100/60 dark:hover:bg-white/5"
+        onClick={() => onToggle(job.jobId)}
+      >
+        <div className="mt-0.5 shrink-0">
+          {isActive ? (
+            <Icon name="sync" className="text-amber-500 animate-spin" size="sm" weight={300} />
+          ) : job.jobStatus === 'succeeded' ? (
+            <Icon name="check_circle" className="text-green-500" size="sm" weight={300} />
+          ) : (
+            <Icon name="error" className="text-red-500" size="sm" weight={300} />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <Typography variant="p" className="text-[12px] font-medium text-slate-800 dark:text-slate-100 truncate">
+            {op}
           </Typography>
-        )}
-        {job.jobStatus === 'failed' && job.error?.message && (
-          <Typography variant="p" className="text-[10px] text-red-600 dark:text-red-400 mt-0.5 line-clamp-2">
-            {job.error.message}
+          <Typography variant="p" className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            {job.dbname ? (hostLabel ? `${job.dbname} (${hostLabel})` : job.dbname) : '—'}
           </Typography>
-        )}
+          {isActive && anchorAt && (
+            <Typography variant="p" className="text-[10px] text-amber-600 dark:text-amber-400 tabular-nums">
+              {formatElapsed(elapsed)}
+            </Typography>
+          )}
+          {job.jobStatus === 'failed' && job.error?.message && (
+            <Typography variant="p" className="text-[10px] text-red-600 dark:text-red-400 mt-0.5 line-clamp-2">
+              {job.error.message}
+            </Typography>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          <StatusBadge status={job.jobStatus} CM={CM} />
+          {isTerminalCmsJobStatus(job.jobStatus) && (
+            <button
+              type="button"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+              onClick={(e) => { e.stopPropagation(); onDismiss(job.jobId); }}
+              aria-label={CM.close}
+            >
+              <Icon name="close" size="sm" weight={300} />
+            </button>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col items-end gap-0.5 shrink-0">
-        <StatusBadge status={job.jobStatus} CM={CM} />
-        {isTerminalCmsJobStatus(job.jobStatus) && (
-          <button
-            type="button"
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
-            onClick={() => onDismiss(job.jobId)}
-            aria-label={CM.close}
-          >
-            <Icon name="close" size="sm" weight={300} />
-          </button>
-        )}
-      </div>
+      {isExpanded && <JobDetail job={job} CM={CM} hostLabel={hostLabel} />}
     </li>
   );
 }
@@ -126,11 +183,19 @@ export function BackgroundJobsPanel({
   onClearCompleted,
 }) {
   const CM = useCM();
+  const { hosts } = useSelector((state) => state.host, shallowEqual);
+  const [expandedJobId, setExpandedJobId] = useState(null);
   const hasCompleted = jobs.some((j) => isTerminalCmsJobStatus(j.jobStatus));
 
   if (jobs.length === 0) {
     return null;
   }
+
+  const hostLabelFor = (hostUid) => {
+    const host = hosts.find((h) => h.uid === hostUid);
+    if (!host) return null;
+    return stripHaRoleTagFromAlias(host.alias || host.id) || host.id;
+  };
 
   return (
     <section
@@ -185,7 +250,15 @@ export function BackgroundJobsPanel({
           )}
           <ul className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             {jobs.map((job) => (
-              <JobRow key={job.jobId} job={job} CM={CM} onDismiss={onDismiss} />
+              <JobRow
+                key={job.jobId}
+                job={job}
+                CM={CM}
+                hostLabel={hostLabelFor(job.hostUid)}
+                isExpanded={expandedJobId === job.jobId}
+                onToggle={(jobId) => setExpandedJobId((cur) => (cur === jobId ? null : jobId))}
+                onDismiss={onDismiss}
+              />
             ))}
           </ul>
         </>

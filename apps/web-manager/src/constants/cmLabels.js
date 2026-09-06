@@ -14,6 +14,10 @@ export const CM = {
   warning: 'Warning',
   success: 'Success',
   failure: 'Failure',
+  created: 'Created',
+  started: 'Started',
+  finished: 'Finished',
+  result: 'Result',
 
   loginDatabase: 'Login Database',
   loginDatabaseMsg: 'Log into the selected database.',

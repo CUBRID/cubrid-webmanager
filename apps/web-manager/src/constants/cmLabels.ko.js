@@ -12,6 +12,10 @@ export const CM_KO = {
   warning: '경고',
   success: '성공',
   failure: '실패',
+  created: '생성됨',
+  started: '시작됨',
+  finished: '완료됨',
+  result: '결과',
 
   loginDatabase: '데이터베이스 로그인',
   loginDatabaseMsg: '선택한 데이터베이스에 로그인합니다.',
