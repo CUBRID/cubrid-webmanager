@@ -139,7 +139,7 @@ function JobRow({ job, CM, hostLabel, isExpanded, onToggle, onDismiss }) {
             {op}
           </Typography>
           <Typography variant="p" className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {job.dbname ? (hostLabel ? `${job.dbname} (${hostLabel})` : job.dbname) : '—'}
+            {job.dbname ? (hostLabel ? `${job.dbname}(${hostLabel})` : job.dbname) : '—'}
           </Typography>
           {isActive && anchorAt && (
             <Typography variant="p" className="text-[10px] text-amber-600 dark:text-amber-400 tabular-nums">

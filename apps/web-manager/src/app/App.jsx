@@ -120,7 +120,7 @@ function DashboardLayout() {
       if (parts.length > 2) {
         const host = hosts.find(h => h.uid === parts[1]);
         const hostLabel = host ? stripHaRoleTagFromAlias(host.alias || host.id) || host.id : CM.unknownHost;
-        acc[tabId] = `${hostLabel}:${parts[2]}`;
+        acc[tabId] = `${parts[2]}(${hostLabel})`;
       } else {
         acc[tabId] = parts[1];
       }
