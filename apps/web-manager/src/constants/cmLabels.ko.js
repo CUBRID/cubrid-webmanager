@@ -348,6 +348,7 @@ export const CM_KO = {
   userManagement: '사용자 관리',
   cmsAccountManagement: 'CMS 계정 관리',
   serverVersion: '서버 버전',
+  server: '서버',
   serverColon: (s) => `서버: ${s}`,
   databaseColon: (db) => `데이터베이스: ${db}`,
   allDatabases: '모든 데이터베이스',
@@ -1923,7 +1924,9 @@ export const CM_KO = {
   serverLogsColonLabel: (db) => `서버 로그: ${db}`,
   usersColonLabel: (db) => `사용자: ${db}`,
   spaceColonLabel: (db) => `공간: ${db}`,
+  backup: '백업',
   backupColonLabel: (planId) => `백업: ${planId}`,
+  queryPlanItem: '질의 자동화 계획 항목',
   queryPlanColonLabel: (db) => `질의 자동화 계획: ${db}`,
   queryPlanItemColonLabel: (qId) => `질의 자동화 계획 항목: ${qId}`,
 

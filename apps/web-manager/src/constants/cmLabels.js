@@ -358,6 +358,7 @@ export const CM = {
   userManagement: 'User Management',
   cmsAccountManagement: 'CMS Account Management',
   serverVersion: 'Server Version',
+  server: 'Server',
   serverColon: (s) => `Server: ${s}`,
   databaseColon: (db) => `Database: ${db}`,
   allDatabases: 'All Databases',
@@ -1937,7 +1938,9 @@ export const CM = {
   serverLogsColonLabel: (db) => `Server Logs: ${db}`,
   usersColonLabel: (db) => `Users: ${db}`,
   spaceColonLabel: (db) => `Space: ${db}`,
+  backup: 'Backup',
   backupColonLabel: (planId) => `Backup: ${planId}`,
+  queryPlanItem: 'Query Plan Item',
   queryPlanColonLabel: (db) => `Query Plan: ${db}`,
   queryPlanItemColonLabel: (qId) => `Query Plan Item: ${qId}`,
 

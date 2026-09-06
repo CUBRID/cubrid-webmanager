@@ -912,7 +912,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {contextMenu && (
         <ContextMenuWrapper x={contextMenu.mouseX} y={contextMenu.mouseY} onClose={() => setContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.serverColon(contextMenu.server)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.server}: <span className="normal-case">{contextMenu.server}</span></Typography>
             <Icon name="dns" size="xs" className="opacity-30" weight={300} />
           </div>
           {authorizedHosts.includes(contextMenu.hostUid) ? (
@@ -1446,7 +1446,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {brokerContextMenu && (
         <ContextMenuWrapper x={brokerContextMenu.mouseX} y={brokerContextMenu.mouseY} onClose={() => setBrokerContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.brokerColon(brokerContextMenu.broker)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.broker}: <span className="normal-case">{brokerContextMenu.broker}</span></Typography>
             <Icon name="hub" size="xs" className="opacity-30" weight={300} />
           </div>
           {brokerContextMenu.state === 'ON' ? (
@@ -1522,7 +1522,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {sqlLogContextMenu && (
         <ContextMenuWrapper x={sqlLogContextMenu.mouseX} y={sqlLogContextMenu.mouseY} onClose={() => setSqlLogContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.sqlLogsColonLabel(sqlLogContextMenu.broker)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.sqlLogs}: <span className="normal-case">{sqlLogContextMenu.broker}</span></Typography>
             <Icon name="history_edu" size="xs" className="opacity-30" weight={300} />
           </div>
           <MenuItem
@@ -1541,7 +1541,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {dbLogContextMenu && (
         <ContextMenuWrapper x={dbLogContextMenu.mouseX} y={dbLogContextMenu.mouseY} onClose={() => setDbLogContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.serverLogsColonLabel(dbLogContextMenu.db)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.serverLogs}: <span className="normal-case">{dbLogContextMenu.db}</span></Typography>
             <Icon name="dns" size="xs" className="opacity-30" weight={300} />
           </div>
           <MenuItem
@@ -1681,7 +1681,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {usersContextMenu && (
         <ContextMenuWrapper x={usersContextMenu.mouseX} y={usersContextMenu.mouseY} onClose={() => setUsersContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-             <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.usersColonLabel(usersContextMenu.db)}</Typography>
+             <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.users}: <span className="normal-case">{usersContextMenu.db}</span></Typography>
              <Icon name="groups" size="xs" className="opacity-30"  weight={300} />
           </div>
           <MenuItem
@@ -1707,7 +1707,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {userContextMenu && (
         <ContextMenuWrapper x={userContextMenu.mouseX} y={userContextMenu.mouseY} onClose={() => setUserContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-widest text-[9px]">{userContextMenu.user}</Typography>
+            <Typography variant="caption" className="font-bold text-slate-700 dark:text-slate-200 tracking-widest text-[9px]">{userContextMenu.user}</Typography>
             <Icon name="person" size="xs" className="opacity-30"  weight={300} />
           </div>
           <MenuItem
@@ -1780,7 +1780,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {spaceContextMenu && (
         <ContextMenuWrapper x={spaceContextMenu.mouseX} y={spaceContextMenu.mouseY} onClose={() => setSpaceContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.spaceColonLabel(spaceContextMenu.db)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.space}: <span className="normal-case">{spaceContextMenu.db}</span></Typography>
             <Icon name="donut_small" size="xs" className="opacity-30"  weight={300} />
           </div>
           <MenuItem
@@ -1836,7 +1836,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {backupItemContextMenu && (
         <ContextMenuWrapper x={backupItemContextMenu.mouseX} y={backupItemContextMenu.mouseY} onClose={() => setBackupItemContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.backupColonLabel(backupItemContextMenu.planId)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.backup}: <span className="normal-case">{backupItemContextMenu.planId}</span></Typography>
             <Icon name="event_note" size="xs" className="opacity-30"  weight={300} />
           </div>
 
@@ -1877,7 +1877,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {queryPlanContextMenu && (
         <ContextMenuWrapper x={queryPlanContextMenu.mouseX} y={queryPlanContextMenu.mouseY} onClose={() => setQueryPlanContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.queryPlanColonLabel(queryPlanContextMenu.db)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.queryPlan}: <span className="normal-case">{queryPlanContextMenu.db}</span></Typography>
             <Icon name="bolt" size="xs" className="opacity-30" weight={300} />
           </div>
           <MenuItem
@@ -1916,7 +1916,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
       {queryItemContextMenu && (
         <ContextMenuWrapper x={queryItemContextMenu.mouseX} y={queryItemContextMenu.mouseY} onClose={() => setQueryItemContextMenu(null)}>
           <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 flex items-center justify-between">
-            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.queryPlanItemColonLabel(queryItemContextMenu.qId)}</Typography>
+            <Typography variant="caption" className="font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[9px]">{CM.queryPlanItem}: <span className="normal-case">{queryItemContextMenu.qId}</span></Typography>
             <Icon name="bolt" size="xs" className="opacity-30" weight={300} />
           </div>
           <MenuItem
