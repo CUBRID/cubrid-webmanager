@@ -7,9 +7,12 @@ import { setActiveMainTab } from '../layout/layoutSlice';
 
 /**
  * Logs into a host (if not already authorized) then opens its dashboard tab.
- * This is a deliberate "activate" action — callers should only invoke it from
- * an explicit gesture (double-click, row-open), never as a reactive side
- * effect of merely selecting/focusing a host.
+ * For an already-authorized host this never logs in — it just switches the
+ * active tab and refetches — so it's safe to call reactively on a plain
+ * single-click focus change (ServerListItem does this) as well as an
+ * explicit gesture (double-click, row-open). For a not-yet-authorized host,
+ * only call this from an explicit gesture: it triggers login, which a mere
+ * focus change should never do.
  */
 export function useHostActivation() {
   const dispatch = useDispatch();

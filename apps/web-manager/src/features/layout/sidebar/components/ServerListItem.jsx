@@ -77,13 +77,21 @@ export default function ServerListItem({
           return;
         }
         onMultiSelect?.(e, host.uid);
-        // A click only moves the visual focus in the server list. The active
-        // host (and therefore Resources) changes exclusively on activation.
         onSelect?.(host.uid);
+        // A plain click also refreshes the Resources section for an
+        // already-authorized host (activation for it never triggers login —
+        // onActivate/activateHost only does that for a not-yet-authorized
+        // host), so switching focus shows current data without needing the
+        // double-click below. A not-yet-authorized host still requires the
+        // double-click gesture to trigger login.
+        if (isAuthorized) {
+          onActivate?.(host.uid);
+        }
       }}
       onDoubleClick={() => {
-        // Login (if needed) + open the dashboard — never on single click.
-        // onActivate already handles the authorized/unauthorized branches.
+        // Login (if needed) + open the dashboard. onActivate already handles
+        // the authorized/unauthorized branches — for an unauthorized host
+        // this is still the only gesture that triggers login.
         onActivate?.(host.uid);
       }}
       onContextMenu={(e) => {
@@ -100,19 +108,19 @@ export default function ServerListItem({
         }`}
       />
 
-      {/* Status dot */}
+      {/* Status dot: green = online, yellow = online but HA role unknown, red = not logged in */}
       <div className="shrink-0 flex items-center justify-center w-4">
         {isAuthorized ? (
           <span className="relative flex w-1.5 h-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
-            <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-emerald-500" />
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-40 ${
+              haRole === 'unknown' ? 'bg-amber-400' : 'bg-emerald-400'
+            }`} />
+            <span className={`relative inline-flex rounded-full w-1.5 h-1.5 ${
+              haRole === 'unknown' ? 'bg-amber-500' : 'bg-emerald-500'
+            }`} />
           </span>
         ) : (
-          <span className={`w-1.5 h-1.5 rounded-full flex-none transition-colors ${
-            isSelected
-              ? 'bg-amber-400/60'
-              : 'bg-slate-300 dark:bg-white/[0.12] group-hover:bg-slate-400 dark:group-hover:bg-white/20'
-          }`} />
+          <span className="w-1.5 h-1.5 rounded-full flex-none bg-rose-500" />
         )}
       </div>
 
