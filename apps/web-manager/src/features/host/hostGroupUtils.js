@@ -82,6 +82,15 @@ export function orderedGroupEntries(hostGroups) {
 
 const HA_ROLE_SORT_ORDER = { master: 0, slave: 1, replica: 2 };
 
+/** Strip a legacy (master)/(slave)/(replica) suffix off a host alias for display. */
+export function stripHaRoleTagFromAlias(alias) {
+  return (alias || '')
+    .replace(/\s*\(master\)/i, '')
+    .replace(/\s*\(slave\)/i, '')
+    .replace(/\s*\(replica\)/i, '')
+    .trim();
+}
+
 /** HA role from Redux haInfo or alias suffix (master)/(slave)/(replica). */
 export function inferHaNodeType(host, haInfoEntry) {
   const fromStore = haInfoEntry?.isHA ? haInfoEntry.currentNodeType : null;

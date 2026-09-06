@@ -3,6 +3,7 @@ import { useSelector, useDispatch , shallowEqual } from 'react-redux';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { toggleTheme, toggleSidebar, setIsResizing, setActiveMainTab, closeTab, closeOtherTabs, closeAllTabs, triggerRefreshActiveTab } from '../features/layout/layoutSlice';
 import { openAddHostModal, closeAddHostModal, closeChangePasswordModal, setSelectedHost } from '../features/host/hostSlice';
+import { stripHaRoleTagFromAlias } from '../features/host/hostGroupUtils';
 import { setSelectedDatabase } from '../features/database/databaseSlice';
 import { closeCreateUserModal, closeEditUserModal, closeDropUserModal } from '../features/user/userSlice';
 import Sidebar from '../features/layout/components/Sidebar';
@@ -113,12 +114,13 @@ function DashboardLayout() {
     if (tabId.startsWith('host:')) {
       const uid = tabId.split(':')[1];
       const host = hosts.find(h => h.uid === uid);
-      acc[tabId] = host ? (host.alias || host.id) : CM.unknownHost;
+      acc[tabId] = host ? stripHaRoleTagFromAlias(host.alias || host.id) || host.id : CM.unknownHost;
     } else if (tabId.startsWith('db:')) {
       const parts = tabId.split(':');
       if (parts.length > 2) {
         const host = hosts.find(h => h.uid === parts[1]);
-        acc[tabId] = `${host ? (host.alias || host.id) : CM.unknownHost}:${parts[2]}`;
+        const hostLabel = host ? stripHaRoleTagFromAlias(host.alias || host.id) || host.id : CM.unknownHost;
+        acc[tabId] = `${hostLabel}:${parts[2]}`;
       } else {
         acc[tabId] = parts[1];
       }
