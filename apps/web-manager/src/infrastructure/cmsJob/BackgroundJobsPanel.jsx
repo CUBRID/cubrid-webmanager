@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector, shallowEqual } from 'react-redux';
 import { Icon } from '../../components/ds/foundation/Icon';
 import { Typography } from '../../components/ds/foundation/Typography';
+import { Modal } from '../../components/ds/layout/Modal';
 import { useCM } from '../../constants/useCM';
 import { stripHaRoleTagFromAlias } from '../../features/host/hostGroupUtils';
 import {
@@ -70,50 +71,59 @@ function formatTimestamp(iso) {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
-function JobDetail({ job, CM, hostLabel }) {
+function DetailRow({ label, value, mono = false }) {
   return (
-    <div className="px-3 pb-2.5 -mt-0.5 space-y-1.5 text-[10.5px] text-slate-500 dark:text-slate-400">
-      <div className="grid grid-cols-[70px_1fr] gap-x-2">
-        <span className="text-slate-400 dark:text-slate-500">{CM.server}</span>
-        <span className="text-slate-700 dark:text-slate-300 truncate">{hostLabel || '—'}</span>
-        <span className="text-slate-400 dark:text-slate-500">{CM.database}</span>
-        <span className="text-slate-700 dark:text-slate-300 truncate">{job.dbname || '—'}</span>
-        <span className="text-slate-400 dark:text-slate-500">{CM.created}</span>
-        <span className="text-slate-700 dark:text-slate-300 tabular-nums">{formatTimestamp(job.createdAt)}</span>
-        {job.startedAt && (
-          <>
-            <span className="text-slate-400 dark:text-slate-500">{CM.started}</span>
-            <span className="text-slate-700 dark:text-slate-300 tabular-nums">{formatTimestamp(job.startedAt)}</span>
-          </>
-        )}
-        {job.finishedAt && (
-          <>
-            <span className="text-slate-400 dark:text-slate-500">{CM.finished}</span>
-            <span className="text-slate-700 dark:text-slate-300 tabular-nums">{formatTimestamp(job.finishedAt)}</span>
-          </>
-        )}
-      </div>
-      {job.error?.message && (
-        <div>
-          <div className="text-slate-400 dark:text-slate-500 mb-0.5">{CM.error}</div>
-          <pre className="whitespace-pre-wrap break-all bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded px-2 py-1.5 font-mono text-[10px]">
-            {job.error.message}
-          </pre>
-        </div>
-      )}
-      {job.result != null && (
-        <div>
-          <div className="text-slate-400 dark:text-slate-500 mb-0.5">{CM.result}</div>
-          <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-white/5 rounded px-2 py-1.5 font-mono text-[10px] max-h-40 overflow-y-auto">
-            {typeof job.result === 'string' ? job.result : JSON.stringify(job.result, null, 2)}
-          </pre>
-        </div>
-      )}
-    </div>
+    <>
+      <span className="text-[11px] text-slate-400 dark:text-slate-500">{label}</span>
+      <span className={`text-[12px] text-slate-700 dark:text-slate-200 truncate ${mono ? 'font-mono tabular-nums' : ''}`}>
+        {value ?? '—'}
+      </span>
+    </>
   );
 }
 
-function JobRow({ job, CM, hostLabel, isExpanded, onToggle, onDismiss }) {
+function JobDetailModal({ job, CM, hostLabel, onClose }) {
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={getCmsJobTypeLabel(job.type, CM)}
+      icon="pending_actions"
+      maxWidth="480px"
+      testId="job-detail"
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-[90px_1fr] gap-x-3 gap-y-2 items-center">
+          <DetailRow label={CM.server} value={hostLabel} />
+          <DetailRow label={CM.database} value={job.dbname} />
+          <span className="text-[11px] text-slate-400 dark:text-slate-500">{CM.status}</span>
+          <div><StatusBadge status={job.jobStatus} CM={CM} /></div>
+          <DetailRow label={CM.created} value={formatTimestamp(job.createdAt)} mono />
+          {job.startedAt && <DetailRow label={CM.started} value={formatTimestamp(job.startedAt)} mono />}
+          {job.finishedAt && <DetailRow label={CM.finished} value={formatTimestamp(job.finishedAt)} mono />}
+        </div>
+        {job.error?.message && (
+          <div>
+            <div className="text-[11px] text-slate-400 dark:text-slate-500 mb-1">{CM.error}</div>
+            <pre className="whitespace-pre-wrap break-all bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg px-2.5 py-2 font-mono text-[11px] max-h-40 overflow-y-auto">
+              {job.error.message}
+            </pre>
+          </div>
+        )}
+        {job.result != null && (
+          <div>
+            <div className="text-[11px] text-slate-400 dark:text-slate-500 mb-1">{CM.result}</div>
+            <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-white/5 rounded-lg px-2.5 py-2 font-mono text-[11px] max-h-40 overflow-y-auto">
+              {typeof job.result === 'string' ? job.result : JSON.stringify(job.result, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+function JobRow({ job, CM, hostLabel, onSelect, onDismiss }) {
   const isActive = job.jobStatus === 'queued' || job.jobStatus === 'running';
   const op = getCmsJobTypeLabel(job.type, CM);
   const anchorAt = job.startedAt || job.createdAt;
@@ -123,7 +133,7 @@ function JobRow({ job, CM, hostLabel, isExpanded, onToggle, onDismiss }) {
     <li className="border-b border-slate-100 dark:border-white/5 last:border-0">
       <div
         className="flex items-start gap-2 px-3 py-2 cursor-pointer hover:bg-slate-100/60 dark:hover:bg-white/5"
-        onClick={() => onToggle(job.jobId)}
+        onClick={() => onSelect(job.jobId)}
       >
         <div className="mt-0.5 shrink-0">
           {isActive ? (
@@ -166,7 +176,6 @@ function JobRow({ job, CM, hostLabel, isExpanded, onToggle, onDismiss }) {
           )}
         </div>
       </div>
-      {isExpanded && <JobDetail job={job} CM={CM} hostLabel={hostLabel} />}
     </li>
   );
 }
@@ -184,8 +193,9 @@ export function BackgroundJobsPanel({
 }) {
   const CM = useCM();
   const { hosts } = useSelector((state) => state.host, shallowEqual);
-  const [expandedJobId, setExpandedJobId] = useState(null);
+  const [selectedJobId, setSelectedJobId] = useState(null);
   const hasCompleted = jobs.some((j) => isTerminalCmsJobStatus(j.jobStatus));
+  const selectedJob = jobs.find((j) => j.jobId === selectedJobId) || null;
 
   if (jobs.length === 0) {
     return null;
@@ -255,13 +265,21 @@ export function BackgroundJobsPanel({
                 job={job}
                 CM={CM}
                 hostLabel={hostLabelFor(job.hostUid)}
-                isExpanded={expandedJobId === job.jobId}
-                onToggle={(jobId) => setExpandedJobId((cur) => (cur === jobId ? null : jobId))}
+                onSelect={setSelectedJobId}
                 onDismiss={onDismiss}
               />
             ))}
           </ul>
         </>
+      )}
+
+      {selectedJob && (
+        <JobDetailModal
+          job={selectedJob}
+          CM={CM}
+          hostLabel={hostLabelFor(selectedJob.hostUid)}
+          onClose={() => setSelectedJobId(null)}
+        />
       )}
     </section>
   );
