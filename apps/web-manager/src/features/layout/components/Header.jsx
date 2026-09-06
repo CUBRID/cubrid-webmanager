@@ -4,14 +4,8 @@ import { logoutUser, fetchUser } from '../../auth/authSlice';
 import { fetchPreferences } from '../../user/userSlice';
 import UserProfileModal from '../../user/components/UserProfileModal';
 import { showStatusModal } from '../layoutSlice';
-import { fetchDatabaseStartInfo, startDatabase } from '../../database/databaseSlice';
-import { fetchBrokerList, startBroker } from '../../broker/brokerSlice';
 import { setAboutCubrid } from '../appBarSlice';
 import { Icon } from '../../../components/ds/foundation/Icon';
-import { useActionState } from '../../../infrastructure/hooks/useActionState';
-import { RefreshingOverlay } from '../../../components/ds/feedback/RefreshingOverlay';
-import { Modal } from '../../../components/ds/layout/Modal';
-import { ModalStatusError } from '../../../components/ds/feedback/ActionStatus';
 import AboutModal from './AboutModal';
 import HeaderMenu from './HeaderMenu';
 import LanguageToggle from './LanguageToggle';
@@ -22,9 +16,6 @@ export default function Header({ theme, toggleTheme }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dispatch = useDispatch();
   const { user, isAuthenticated, loading: authLoading, error: authError } = useSelector((state) => state.auth, shallowEqual);
-  const { selectedHostUid } = useSelector((state) => state.host, shallowEqual);
-  const { selectedDatabase, activeDatabases } = useSelector((state) => state.database, shallowEqual);
-  const { selectedBroker, brokers } = useSelector((state) => state.broker, shallowEqual);
 
   useEffect(() => {
     if (isAuthenticated && !user) {
@@ -38,44 +29,6 @@ export default function Header({ theme, toggleTheme }) {
     window.location.href = '/login';
   };
 
-  const { 
-    startAction, 
-    endError, 
-    resetAction,
-    isLoading: headerActionLoading,
-    isError: isHeaderActionError,
-    error: headerActionError
-  } = useActionState();
-
-  const [loadingTitle, setLoadingTitle] = useState(CM.applyingChanges);
-
-  const handleStart = async () => {
-    if (selectedDatabase && !activeDatabases.includes(selectedDatabase)) {
-      setLoadingTitle(CM.startingDatabase(selectedDatabase));
-      startAction();
-      try {
-        await dispatch(startDatabase({ hostUid: selectedHostUid, dbname: selectedDatabase })).unwrap();
-        dispatch(fetchDatabaseStartInfo(selectedHostUid));
-        resetAction();
-      } catch (err) {
-        endError(err);
-      }
-    } else if (selectedBroker) {
-      const broker = brokers.find(b => b.name === selectedBroker);
-      if (broker && broker.state !== 'ON') {
-        setLoadingTitle(CM.startingBroker(selectedBroker));
-        startAction();
-        try {
-          await dispatch(startBroker({ hostUid: selectedHostUid, brokerName: selectedBroker })).unwrap();
-          dispatch(fetchBrokerList(selectedHostUid));
-          resetAction();
-        } catch (err) {
-          endError(err);
-        }
-      }
-    }
-  };
-
   /* ── icon button shared style ── */
   const btnBase = "h-8 flex items-center justify-center rounded-sm border transition-all active:scale-[0.98]";
   const iconBtn = `${btnBase} w-8 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/6 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200`;
@@ -83,37 +36,11 @@ export default function Header({ theme, toggleTheme }) {
   return (
     <>
       <header className="bg-white dark:bg-background-dark border-b border-slate-100 dark:border-white/6 h-14 flex items-center justify-center px-6 z-40 shrink-0 select-none relative">
-        {/* Global Action Overlay for Header Actions - Using direct fixed component call */}
-        {headerActionLoading && (
-          <RefreshingOverlay 
-            show={true} 
-            title={loadingTitle} 
-            className="fixed z-[10002]"
-          />
-        )}
-
         <div className="w-full flex items-center justify-between">
-          {/* ── Left: logo + menus + quick actions ── */}
+          {/* ── Left: logo + menus ── */}
           <div className="flex items-center gap-1">
             {/* Dropdown menus */}
             <HeaderMenu />
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-white/8 mx-3" />
-
-            {/* Quick action: Start */}
-            <button
-              className={`${btnBase} px-3 gap-2 bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 font-bold text-[11px] uppercase tracking-wider relative overflow-hidden`}
-              title={CM.startSelectedDbBroker}
-              onClick={handleStart}
-              disabled={headerActionLoading}
-            >
-              {headerActionLoading ? (
-                 <Icon name="refresh" size="18px" className="animate-spin opacity-50" />
-              ) : (
-                 <Icon name="play_arrow" size="18px" weight={400} className="text-amber-500" />
-              )}
-              {CM.startLabel}
-            </button>
           </div>
 
           {/* ── Right: theme toggle + user + logout ── */}
@@ -163,12 +90,12 @@ export default function Header({ theme, toggleTheme }) {
 
             {/* Logout */}
             <button
-              className={`${btnBase} gap-1.5 px-2.5 bg-rose-500/5 border-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white hover:border-rose-500`}
+              className="h-8 flex items-center justify-center rounded-sm border transition-all active:scale-[0.98] gap-2 px-4 bg-rose-500/5 border-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white hover:border-rose-500"
               onClick={handleLogout}
               title={CM.logout}
             >
-              <Icon name="logout" size="16px" weight={300} />
-              <span className="text-[12px] font-bold tracking-tight">{CM.logout}</span>
+              <Icon name="logout" size="18px" weight={400} />
+              <span className="text-[13px] font-bold tracking-tight">{CM.logout}</span>
             </button>
           </div>
         </div>
@@ -176,18 +103,6 @@ export default function Header({ theme, toggleTheme }) {
 
       <UserProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       <AboutModal />
-
-      {isHeaderActionError && (
-        <Modal isOpen title={CM.updateFailed} icon="error" iconVariant="danger" onClose={resetAction} maxWidth="400px">
-          <ModalStatusError 
-            title={CM.failure}
-            error={headerActionError}
-            onRetry={resetAction}
-            onCancel={resetAction}
-            retryText={CM.dismiss}
-          />
-        </Modal>
-      )}
     </>
   );
 }
