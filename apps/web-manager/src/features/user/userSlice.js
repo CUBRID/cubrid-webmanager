@@ -4,7 +4,7 @@ import { userApi } from './userApi';
 
 export const DEFAULT_PREFERENCES = {
   dashboardInterval: 3,
-  brokerStatusInterval: 0,
+  brokerStatusInterval: 3,
   uiLocale: 'en',
 };
 
