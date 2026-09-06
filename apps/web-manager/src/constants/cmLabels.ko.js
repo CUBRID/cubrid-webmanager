@@ -991,7 +991,7 @@ export const CM_KO = {
   haMaster: '마스터',
   haSlave: '슬레이브',
   haReplica: '레플리카',
-  haUnknown: '알 수 없음',
+  haUnknown: 'unknown',
   clusterOverview: '클러스터 개요',
   expandGroupTitle: '그룹 펼치기',
   collapseGroupTitle: '그룹 접기',
