@@ -41,7 +41,7 @@ export default function DatabaseListSection({ dbListDisplay }) {
       )
     },
     {
-      header: CM.status,
+      header: CM.runningStatus,
       accessor: 'status',
       render: (val) => (
         <StatusBadge 

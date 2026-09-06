@@ -231,6 +231,7 @@ export const CM = {
   address: 'Address',
   port: 'Port',
   status: 'Status',
+  runningStatus: 'Running Status',
   type: 'Type',
   value: 'Value',
   actions: 'Actions',

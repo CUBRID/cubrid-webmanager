@@ -224,6 +224,7 @@ export const CM_KO = {
   address: '주소',
   port: '포트',
   status: '상태',
+  runningStatus: '구동 상태',
   type: '유형',
   value: '값',
   actions: '작업',
