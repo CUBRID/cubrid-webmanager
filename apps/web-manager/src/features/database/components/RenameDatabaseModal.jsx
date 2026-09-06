@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeRenameDatabaseModal, fetchDatabaseStartInfo } from '../databaseSlice';
 import { databaseJobApi } from '../databaseJobApi';
@@ -39,16 +39,6 @@ const validateDbName = (name) => {
   return /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name);
 };
 
-const validatePath = (path) => {
-  if (!path) return false;
-  if (!/^[\x20-\x7E]+$/.test(path)) return false;
-  if (path.includes(' ')) return false;
-  if (path.startsWith('#') || path.startsWith('-')) return false;
-  if (/[*&%$|^]/.test(path)) return false;
-  if (path === '.' || path === '..') return false;
-  return true;
-};
-
 export default function RenameDatabaseModal() {
   const CM = useCM();
   const dispatch = useDispatch();
@@ -72,7 +62,6 @@ export default function RenameDatabaseModal() {
 
   const [newDbName, setNewDbName] = useState('');
   const [forcedel, setForcedel] = useState(false);
-  const [exvolpath, setExvolpath] = useState('');
   // Snapshot of the name being renamed, for the success screen. Redux's
   // selectedDatabase can't be used there — a successful rename dispatches
   // fetchDatabaseStartInfo, which nulls selectedDatabase out once the old
@@ -80,16 +69,12 @@ export default function RenameDatabaseModal() {
   // parseDbResponse), so by the time the success view renders it's gone.
   const [renamedFromDb, setRenamedFromDb] = useState('');
 
-  const isExvolpathEditedRef = useRef(false);
-
   useEffect(() => {
     if (isRenameDatabaseModalOpen) {
       setNewDbName('');
       setForcedel(false);
-      setExvolpath(getParentDirectory(currentDb?.dbdir || ''));
       setRenamedFromDb('');
       resetAction();
-      isExvolpathEditedRef.current = false;
     }
     // Only (re)initialize when the modal opens — NOT whenever selectedDatabase
     // changes while it's already open. A successful rename dispatches
@@ -101,12 +86,6 @@ export default function RenameDatabaseModal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRenameDatabaseModalOpen]);
 
-  useEffect(() => {
-    if (isExvolpathEditedRef.current) return;
-    const parentDir = getParentDirectory(currentDb?.dbdir || '');
-    setExvolpath(parentDir);
-  }, [selectedDatabase, currentDb?.dbdir]);
-
   if (!isRenameDatabaseModalOpen) return null;
 
   const handleRename = async () => {
@@ -115,7 +94,7 @@ export default function RenameDatabaseModal() {
     try {
       const payload = {
         rename: newDbName.trim(),
-        exvolpath: exvolpath.trim(),
+        exvolpath: getParentDirectory(currentDb?.dbdir || '').trim(),
         advanced: 'off',
         forcedel: forcedel ? 'y' : 'n',
       };
@@ -141,9 +120,8 @@ export default function RenameDatabaseModal() {
 
   const isNameValid = validateDbName(newDbName);
   const isNameChanged = newDbName.trim() !== selectedDatabase;
-  const isExvolpathValid = validatePath(exvolpath);
 
-  const isFormValid = isNameValid && isNameChanged && isExvolpathValid;
+  const isFormValid = isNameValid && isNameChanged;
 
   /* ─── LOADING view ─── */
   if (isLoading) {
@@ -236,20 +214,6 @@ export default function RenameDatabaseModal() {
             className="w-full"
             autoFocus
             error={newDbName && !validateDbName(newDbName) ? "Name must be 1-17 alphanumeric, underscore or hyphen characters" : undefined}
-          />
-        </div>
-
-        {/* Extended Volume Path Row */}
-        <div className="grid grid-cols-[170px_1fr] items-center gap-4">
-          <label className="font-medium text-slate-700 dark:text-slate-200">
-            {CM.extendedVolumePath}
-          </label>
-          <Input
-            value={exvolpath}
-            onChange={(e) => { isExvolpathEditedRef.current = true; setExvolpath(e.target.value); }}
-            placeholder="/home/cubrid/databases/demodb"
-            className="w-full"
-            error={exvolpath && !validatePath(exvolpath) ? "Invalid path format" : undefined}
           />
         </div>
 
