@@ -253,8 +253,11 @@ export default function DatabaseTree({
                 title={CM.databaseCredentialsSaved}
               />
             )}
-            <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+            <Icon
+              name={isLoggedIn ? 'lock_open' : 'lock'}
+              size="10px"
+              weight={isLoggedIn ? 500 : 400}
+              className={`shrink-0 ${isLoggedIn ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-700'}`}
               title={isLoggedIn ? CM.databaseLoggedIn : CM.databaseNotLoggedIn}
             />
           </span>
