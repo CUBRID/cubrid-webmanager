@@ -460,4 +460,28 @@ describe('DatabaseUserService', () => {
       ).rejects.toThrow(ValidationError);
     });
   });
+
+  describe('logoutDatabase', () => {
+    it('clears the ensureDbLogin cache without touching the stored profile', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue({
+        __EXEC_TIME: '10 ms',
+        note: 'none',
+        status: 'success',
+        task: 'dbmtuserlogin',
+      });
+      await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+      cmsClient.postAuthenticated.mockClear();
+
+      await service.logoutDatabase(mockUserId, mockHostUid, 'demodb');
+
+      // Profile untouched — logout is not the same as forgetting credentials.
+      expect(repository.atomicUpdateUser).not.toHaveBeenCalled();
+      expect(mockHost.dbProfiles).toHaveProperty('demodb');
+
+      // But the cache is gone, so the next ensureDbLogin re-authenticates.
+      const result = await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+      expect(result).toEqual({ reauthenticated: true });
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledTimes(1);
+    });
+  });
 });

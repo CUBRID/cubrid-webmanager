@@ -157,6 +157,23 @@ export class DatabaseUserService extends BaseService {
   }
 
   /**
+   * Explicitly logs out of a database — forgets ensureDbLogin's belief that
+   * this (host, db) has a live dbmtuserlogin, so the next database action
+   * goes through a fresh login instead of reusing the cached one. Does not
+   * touch the stored profile (see deleteDbProfile for that): a "log me out
+   * of this session" action, not "forget these credentials".
+   *
+   * There's no CMS-side counterpart to actually invalidate the server's own
+   * conlist entry (no such API exists — see ensureDbLogin's doc comment on
+   * conlist having no expiry/removal mechanism at all), so this is purely
+   * our own bookkeeping. The next action will re-authenticate using the
+   * profile if one is still stored, or prompt for manual login otherwise.
+   */
+  async logoutDatabase(userId: string, hostUid: string, dbname: string): Promise<void> {
+    this.dbLoginCache.delete(`${userId}:${hostUid}:${dbname}`);
+  }
+
+  /**
    * Login to a database using profile or client-provided credentials.
    */
   @HandleCmsErrors()
