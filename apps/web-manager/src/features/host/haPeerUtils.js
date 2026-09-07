@@ -1,5 +1,25 @@
 import { flattenHostsFromGroups, findGroupIdForHost } from './hostGroupUtils';
 
+/** Node list from a `getHaHeartbeatList` response's `hanodelist[0].node`, normalized to an array. */
+export function extractHaHeartbeatNodes(haHeartbeat) {
+  const rawNodeGroups = haHeartbeat?.hanodelist;
+  const nodeGroups = Array.isArray(rawNodeGroups) ? rawNodeGroups : (rawNodeGroups ? [rawNodeGroups] : []);
+  const rawNodes = nodeGroups[0]?.node;
+  return Array.isArray(rawNodes) ? rawNodes : (rawNodes ? [rawNodes] : []);
+}
+
+/**
+ * True when the heartbeat lists at least one node but none of them report
+ * MASTER — likely mid-failover. False (not abnormal) when there's no
+ * heartbeat data at all yet, so a still-loading dashboard isn't mistaken for
+ * a failover.
+ */
+export function isHaClusterMissingMaster(haHeartbeat) {
+  const nodes = extractHaHeartbeatNodes(haHeartbeat);
+  if (nodes.length === 0) return false;
+  return !nodes.some((node) => ((node.status || node.state || '').trim().toUpperCase()) === 'MASTER');
+}
+
 export function isHaPostLoginModalOpen(hostState) {
   return Boolean(
     hostState?.isDiscoveryModalOpen

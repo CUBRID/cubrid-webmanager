@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSelector, shallowEqual } from 'react-redux';
 import { Icon } from '../../../../components/ds/foundation/Icon';
+import { extractHaHeartbeatNodes } from '../../../host/haPeerUtils';
 import { useCM } from '../../../../constants/useCM';
 
 const ROLE_ORDER = { MASTER: 0, SLAVE: 1, REPLICA: 2 };
@@ -32,10 +33,7 @@ export default function HaClusterStatusSection({ hostUid }) {
     return null;
   }
 
-  const rawNodeGroups = hostData.haHeartbeat.hanodelist;
-  const nodeGroups = Array.isArray(rawNodeGroups) ? rawNodeGroups : (rawNodeGroups ? [rawNodeGroups] : []);
-  const rawNodes = nodeGroups[0]?.node;
-  const nodes = (Array.isArray(rawNodes) ? rawNodes : (rawNodes ? [rawNodes] : []))
+  const nodes = extractHaHeartbeatNodes(hostData.haHeartbeat)
     .slice()
     .sort((a, b) => getRolePriority(a.status || a.state) - getRolePriority(b.status || b.state));
 

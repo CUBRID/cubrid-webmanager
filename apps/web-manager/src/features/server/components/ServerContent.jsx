@@ -1,5 +1,5 @@
 import { usePollingRefresh } from '../../../infrastructure/hooks/usePollingRefresh';
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useSelector, useDispatch , shallowEqual } from 'react-redux';
 import { hostApi } from '../../host/hostApi';
 import { fetchHostEnv } from '../../host/hostSlice';
@@ -9,7 +9,8 @@ import DatabaseVolumes from './DatabaseVolumes';
 import Brokers from './Brokers';
 import SystemInfo from './SystemInfo';
 import { fetchDatabaseVolumes } from '../../database/databaseMonitoringSlice';
-import { fetchMonitoringData } from '../monitoringSlice';
+import { fetchMonitoringData, fetchHaHeartbeatOnly } from '../monitoringSlice';
+import { isHaClusterMissingMaster } from '../../host/haPeerUtils';
 
 import SystemStatusSection from './server/SystemStatusSection';
 import DatabaseListSection from './server/DatabaseListSection';
@@ -18,6 +19,10 @@ import MonitoringSettingsPopover from '../../user/components/MonitoringSettingsP
 import { Typography } from '../../../components/ds/foundation/Typography';
 import { Icon } from '../../../components/ds/foundation/Icon';
 import { useCM } from '../../../constants/useCM';
+
+// See the HA-abnormal fast-poll effect below.
+const HA_ABNORMAL_POLL_INTERVAL_MS = 1000;
+const HA_ABNORMAL_POLL_MAX_MS = 30000;
 
 const Component = function ServerContent({ hostUid }) {
   const CM = useCM();
@@ -99,6 +104,35 @@ const Component = function ServerContent({ hostUid }) {
   const isTabActive = activeMainTab === `host:${hostUid}`;
 
   const haHeartbeat = hostData?.haHeartbeat;
+
+  // While no node reports master (likely mid-failover), poll just the HA
+  // heartbeat at a much shorter interval than the normal dashboard refresh
+  // so the UI catches the new master quickly — capped so a stuck/permanent
+  // failure doesn't poll indefinitely, falling back to the normal interval
+  // either way once the cap is hit. Deliberately its own lightweight fetch
+  // (heartbeat only, not hostStat/brokers too) to avoid the extra traffic a
+  // full fetchMonitoringData tick every second would cost.
+  const isHaAbnormal = isHA && isHaClusterMissingMaster(haHeartbeat);
+  const haAbnormalSinceRef = useRef(null);
+  useEffect(() => {
+    if (!isTabActive || !isHaAbnormal || !authorizedHosts.includes(hostUid)) {
+      haAbnormalSinceRef.current = null;
+      return;
+    }
+
+    haAbnormalSinceRef.current = haAbnormalSinceRef.current ?? Date.now();
+
+    const timer = setInterval(() => {
+      if (Date.now() - haAbnormalSinceRef.current >= HA_ABNORMAL_POLL_MAX_MS) {
+        clearInterval(timer);
+        return;
+      }
+      dispatch(fetchHaHeartbeatOnly(hostUid));
+    }, HA_ABNORMAL_POLL_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [isTabActive, isHaAbnormal, authorizedHosts, hostUid, dispatch]);
+
   const haDbs = React.useMemo(() => {
     const names = new Set();
     const raw = haHeartbeat?.hadbinfolist;
