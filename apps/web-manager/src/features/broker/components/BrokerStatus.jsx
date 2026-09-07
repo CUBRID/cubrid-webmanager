@@ -271,12 +271,13 @@ const Component = function BrokerStatus({ hostUid, brokerName }) {
           bodyClassName="p-0"
           collapsible
         >
-          <Table 
-            columns={jobColumns} 
-            data={jobInfo} 
-            sortable 
-            zebra 
+          <Table
+            columns={jobColumns}
+            data={jobInfo}
+            sortable
+            zebra
             emptyMessage={CM.jobQueueEmptyMsg}
+            showEmptyStateAsRow
           />
         </Card>
       </div>
