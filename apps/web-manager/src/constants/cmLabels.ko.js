@@ -222,6 +222,8 @@ export const CM_KO = {
   connect: '연결',
   loginAll: '전체 로그인',
   disconnect: '연결 해제',
+  confirmDisconnectHostTitle: '호스트 연결 해제',
+  confirmDisconnectHostDesc: (alias) => `"${alias}" 연결을 해제하시겠습니까? 열려있는 탭이 모두 닫히고, 이 호스트의 데이터베이스 로그인도 다시 해야 합니다.`,
   openDashboard: '대시보드 열기',
   tryAgain: '다시 시도',
   add: '추가',

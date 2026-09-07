@@ -229,6 +229,8 @@ export const CM = {
   connect: 'Connect',
   loginAll: 'Login All',
   disconnect: 'Disconnect',
+  confirmDisconnectHostTitle: 'Disconnect Host',
+  confirmDisconnectHostDesc: (alias) => `Disconnect from "${alias}"? All its open tabs will be closed, and any database login on it will need to be re-established.`,
   openDashboard: 'Open Dashboard',
   tryAgain: 'Try Again',
   add: 'Add',

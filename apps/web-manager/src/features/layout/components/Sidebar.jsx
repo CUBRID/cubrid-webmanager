@@ -926,15 +926,24 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
               label={CM.disconnect}
               onClick={() => {
                 const hostUid = contextMenu.hostUid;
-                dispatch(revokeHostLogin(hostUid));
-                dispatch(closeHostTabs(hostUid));
-                if (selectedHostUid === hostUid) {
-                  dispatch(setSelectedHost(null));
-                  dispatch(resetDatabaseState());
-                  dispatch(resetBrokerState());
-                }
-                dispatch(clearHostSummary(hostUid));
+                const alias = contextMenu.alias;
                 setContextMenu(null);
+                requestActionConfirm({
+                  title: CM.confirmDisconnectHostTitle,
+                  description: CM.confirmDisconnectHostDesc(alias),
+                  confirmLabel: CM.disconnect,
+                  variant: 'danger',
+                  run: () => {
+                    dispatch(revokeHostLogin(hostUid));
+                    dispatch(closeHostTabs(hostUid));
+                    if (selectedHostUid === hostUid) {
+                      dispatch(setSelectedHost(null));
+                      dispatch(resetDatabaseState());
+                      dispatch(resetBrokerState());
+                    }
+                    dispatch(clearHostSummary(hostUid));
+                  },
+                });
               }}
             />
           ) : (
