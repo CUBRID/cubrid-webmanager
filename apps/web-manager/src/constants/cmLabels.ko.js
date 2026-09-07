@@ -25,6 +25,8 @@ export const CM_KO = {
   password: '비밀번호',
   databaseName: '데이터베이스 이름',
   savePassword: '비밀번호 저장',
+  databaseCredentialsSaved: '이 데이터베이스의 로그인 정보가 저장되어 있습니다',
+  updateDatabaseCredentials: '데이터베이스 자격증명 변경',
 
   transactionInformation: '트랜잭션 정보',
   activeTransactionsOf: '데이터베이스의 활성 트랜잭션:',

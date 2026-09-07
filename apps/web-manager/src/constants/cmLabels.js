@@ -27,6 +27,8 @@ export const CM = {
   password: 'Password',
   databaseName: 'Database name',
   savePassword: 'Save Password',
+  databaseCredentialsSaved: 'Login credentials saved for this database',
+  updateDatabaseCredentials: 'Update Database Credentials',
 
   transactionInformation: 'Transaction information',
   activeTransactionsOf: 'Active transactions of database:',

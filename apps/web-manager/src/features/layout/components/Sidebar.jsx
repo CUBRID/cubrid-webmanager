@@ -1203,6 +1203,26 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
               icon="login"
               label={CM.loginDatabase}
               onClick={() => {
+                const dbname = dbContextMenu.db;
+                setDbContextMenu(null);
+                // Match double-click activation's rule (DatabaseTree's
+                // handleDbActivate): a saved profile logs in silently, no
+                // modal — the modal is only for when there's nothing saved
+                // to log in with yet.
+                if (databases.find((d) => d.dbname === dbname)?.isProfileExists) {
+                  dispatch(loginDatabase({ hostUid: selectedHostUid, dbname, isBackground: true }));
+                } else {
+                  dispatch(setSelectedDatabase(dbname));
+                  dispatch(openLoginDatabaseModal(dbname));
+                }
+              }}
+            />
+          )}
+          {databases.find((d) => d.dbname === dbContextMenu.db)?.isProfileExists && (
+            <MenuItem
+              icon="key"
+              label={CM.updateDatabaseCredentials}
+              onClick={() => {
                 dispatch(setSelectedDatabase(dbContextMenu.db));
                 dispatch(openLoginDatabaseModal(dbContextMenu.db));
                 setDbContextMenu(null);

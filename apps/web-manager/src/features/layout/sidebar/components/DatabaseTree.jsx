@@ -241,6 +241,15 @@ export default function DatabaseTree({
                 HA
               </span>
             )}
+            {db.isProfileExists && (
+              <Icon
+                name="key"
+                size="10px"
+                weight={400}
+                className="text-slate-400 dark:text-slate-500 shrink-0"
+                title={CM.databaseCredentialsSaved}
+              />
+            )}
           </span>
         );
 
