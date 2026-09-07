@@ -499,7 +499,20 @@ const databaseOperationSlice = createSlice({
       .addCase(fetchQueryPlanLog.rejected, (state, action) => {
         state.logsLoading = false;
         state.logsError = action.payload;
-      });
+      })
+      // Drop cached backup schedules/query plans once a database's dbmt
+      // login is gone (explicit logout or forgetting its saved credentials)
+      // — otherwise the stale list from the old login stays visible.
+      .addMatcher(
+        (action) => action.type === 'database/logoutDatabase/fulfilled' || action.type === 'database/deleteDatabaseProfile/fulfilled',
+        (state, action) => {
+          const { dbname } = action.meta.arg;
+          delete state.backupSchedules[dbname];
+          delete state.backupSchedulesLoading[dbname];
+          delete state.queryPlans[dbname];
+          delete state.queryPlansLoading[dbname];
+        }
+      );
   }
 });
 

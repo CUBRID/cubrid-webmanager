@@ -280,7 +280,19 @@ const userSlice = createSlice({
       .addCase(dropDatabaseUser.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload;
-      });
+      })
+      // Drop cached database users once a database's dbmt login is gone
+      // (explicit logout or forgetting its saved credentials) — otherwise
+      // the stale list from the old login stays visible after logout.
+      .addMatcher(
+        (action) => action.type === 'database/logoutDatabase/fulfilled' || action.type === 'database/deleteDatabaseProfile/fulfilled',
+        (state, action) => {
+          const { dbname } = action.meta.arg;
+          delete state.databaseUsers[dbname];
+          delete state.databaseUsersLoading[dbname];
+          delete state.databaseUsersError[dbname];
+        }
+      );
   },
 });
 

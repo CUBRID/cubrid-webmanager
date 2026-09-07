@@ -281,6 +281,10 @@ const databaseCoreSlice = createSlice({
       })
       .addCase(deleteDatabaseProfile.fulfilled, (state, action) => {
         state.actionLoading = false;
+        // Forgetting the profile also drops the server's dbmt-login cache
+        // for it (deleteDbProfile clears both), so this db is no longer
+        // logged in on the client either.
+        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== action.payload.dbname);
         if (action.payload.response) {
           parseDbResponse(state, action.payload.response);
         }

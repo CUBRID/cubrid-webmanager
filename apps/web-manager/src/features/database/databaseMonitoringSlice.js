@@ -302,6 +302,22 @@ const databaseMonitoringSlice = createSlice({
           state.spaceInfo = {};
           state.spaceInfoLoading = {};
         }
+      )
+      // Drop cached space/dashboard data once a database's dbmt login is
+      // gone (explicit logout or forgetting its saved credentials) — it was
+      // fetched under a login that no longer exists, so leaving it around
+      // would show stale data as if it were still current.
+      .addMatcher(
+        (action) => action.type === 'database/logoutDatabase/fulfilled' || action.type === 'database/deleteDatabaseProfile/fulfilled',
+        (state, action) => {
+          const { hostUid, dbname } = action.meta.arg;
+          const key = dashboardKey(hostUid, dbname);
+          delete state.dashboardData[key];
+          delete state.dashboardLoading[key];
+          delete state.dashboardError[key];
+          delete state.spaceInfo[key];
+          delete state.spaceInfoLoading[key];
+        }
       );
   }
 });
