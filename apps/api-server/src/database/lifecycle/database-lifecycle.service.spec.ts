@@ -82,6 +82,7 @@ describe('DatabaseLifecycleService', () => {
       updateUser: jest.fn(),
       loginDatabase: jest.fn().mockResolvedValue({}),
       getUserInfo: jest.fn().mockResolvedValue({ user: [] }),
+      ensureDbLogin: jest.fn().mockResolvedValue({ reauthenticated: false }),
     };
 
     const mockDatabaseConfigService = {

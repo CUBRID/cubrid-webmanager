@@ -90,6 +90,14 @@ export class DatabaseLifecycleService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<BaseCmsResponse> {
+    // Deliberate policy, not a CMS/engine requirement — startdb itself needs
+    // no db user credentials. Every database action (this one included) is
+    // required to go through a dbmtuserlogin first, as a standing
+    // authentication gate rather than an as-needed one. Reused by
+    // startDatabase, restartDatabase, and startAllDatabases alike, so this
+    // one call site covers the individual and bulk paths together.
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     return this.executeCmsRequest<StartDatabaseCmsRequest & { task: 'startdb' }, BaseCmsResponse>(
       userId,
       hostUid,
@@ -105,6 +113,10 @@ export class DatabaseLifecycleService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<BaseCmsResponse> {
+    // See startNonHaDatabase's comment — same standing policy, covers
+    // stopDatabase, restartDatabase, and stopAllDatabases together.
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     return this.executeCmsRequest<StopDatabaseCmsRequest & { task: 'stopdb' }, BaseCmsResponse>(
       userId,
       hostUid,
