@@ -159,6 +159,11 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
     hostUid: null,
     serverName: '',
   });
+  // Generic gate for a risky action (db/broker start/stop, single or bulk) —
+  // set { title, description, confirmLabel, variant, run } to show the
+  // dialog; onConfirm calls run() and clears this, onCancel just clears it.
+  const [pendingActionConfirm, setPendingActionConfirm] = useState(null);
+  const requestActionConfirm = (config) => setPendingActionConfirm(config);
 
   const { hosts, hostGroups, selectedHostUid, selectedGroupUid, loading: hostsLoading, authorizedHosts, isLoggingIntoHost, hostAuthErrors, haInfo } = useSelector((state) => state.host, shallowEqual);
   const { databases, activeDatabases, loggedInDatabases } = useSelector((state) => state.database, shallowEqual);
@@ -1141,39 +1146,55 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="stop"
               label={CM.stopDatabase}
-              onClick={async () => {
+              onClick={() => {
                 const dbName = dbContextMenu.db;
                 setDbContextMenu(null);
-                setLoadingText(`${CM.stoppingDbNamed(dbName)} ...`);
-                startAction();
-                try {
-                  await dispatch(stopDatabase({ hostUid: selectedHostUid, dbname: dbName })).unwrap();
-                  dispatch(fetchDatabaseStartInfo(selectedHostUid));
-                  resetAction();
-                } catch (err) {
-                  // CMS stopdb may time out even when DB has actually stopped.
-                  // Always re-sync so the tree reflects the real state.
-                  dispatch(fetchDatabaseStartInfo(selectedHostUid));
-                  endError(err);
-                }
+                requestActionConfirm({
+                  title: CM.confirmStopDatabaseTitle,
+                  description: CM.confirmStopDatabaseDesc(dbName),
+                  confirmLabel: CM.stopDatabase,
+                  variant: 'danger',
+                  run: async () => {
+                    setLoadingText(`${CM.stoppingDbNamed(dbName)} ...`);
+                    startAction();
+                    try {
+                      await dispatch(stopDatabase({ hostUid: selectedHostUid, dbname: dbName })).unwrap();
+                      dispatch(fetchDatabaseStartInfo(selectedHostUid));
+                      resetAction();
+                    } catch (err) {
+                      // CMS stopdb may time out even when DB has actually stopped.
+                      // Always re-sync so the tree reflects the real state.
+                      dispatch(fetchDatabaseStartInfo(selectedHostUid));
+                      endError(err);
+                    }
+                  },
+                });
               }}
             />
           ) : (
             <MenuItem
               icon="play_arrow"
               label={CM.startDatabase}
-              onClick={async () => {
+              onClick={() => {
                 const dbName = dbContextMenu.db;
                 setDbContextMenu(null);
-                setLoadingText(`${CM.startingDbNamed(dbName)} ...`);
-                startAction();
-                try {
-                  await dispatch(startDatabase({ hostUid: selectedHostUid, dbname: dbName })).unwrap();
-                  dispatch(fetchDatabaseStartInfo(selectedHostUid));
-                  resetAction();
-                } catch (err) {
-                  endError(err);
-                }
+                requestActionConfirm({
+                  title: CM.confirmStartDatabaseTitle,
+                  description: CM.confirmStartDatabaseDesc(dbName),
+                  confirmLabel: CM.startDatabase,
+                  variant: 'primary',
+                  run: async () => {
+                    setLoadingText(`${CM.startingDbNamed(dbName)} ...`);
+                    startAction();
+                    try {
+                      await dispatch(startDatabase({ hostUid: selectedHostUid, dbname: dbName })).unwrap();
+                      dispatch(fetchDatabaseStartInfo(selectedHostUid));
+                      resetAction();
+                    } catch (err) {
+                      endError(err);
+                    }
+                  },
+                });
               }}
             />
           )}
@@ -1277,61 +1298,85 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="play_circle"
             label={CM.startAllDatabases}
-            onClick={async () => {
+            onClick={() => {
               setDbRootContextMenu(null);
-              setLoadingText(CM.startingAllDatabasesMsg);
-              startAction();
-              try {
-                for (const db of databases) {
-                  if (!activeDatabases.includes(db.dbname)) {
-                    await dispatch(startDatabase({ hostUid: selectedHostUid, dbname: db.dbname })).unwrap();
+              requestActionConfirm({
+                title: CM.confirmStartAllDatabasesTitle,
+                description: CM.confirmStartAllDatabasesDesc,
+                confirmLabel: CM.startAllDatabases,
+                variant: 'primary',
+                run: async () => {
+                  setLoadingText(CM.startingAllDatabasesMsg);
+                  startAction();
+                  try {
+                    for (const db of databases) {
+                      if (!activeDatabases.includes(db.dbname)) {
+                        await dispatch(startDatabase({ hostUid: selectedHostUid, dbname: db.dbname })).unwrap();
+                      }
+                    }
+                    dispatch(fetchDatabaseStartInfo(selectedHostUid));
+                    resetAction();
+                  } catch (err) {
+                    endError(err);
                   }
-                }
-                dispatch(fetchDatabaseStartInfo(selectedHostUid));
-                resetAction();
-              } catch (err) {
-                endError(err);
-              }
+                },
+              });
             }}
           />
           <MenuItem
             icon="stop_circle"
             label={CM.stopAllDatabases}
-            onClick={async () => {
+            onClick={() => {
               setDbRootContextMenu(null);
-              setLoadingText(CM.stoppingAllDatabasesMsg);
-              startAction();
-              try {
-                for (const dbname of activeDatabases) {
-                  await dispatch(stopDatabase({ hostUid: selectedHostUid, dbname })).unwrap();
-                }
-                dispatch(fetchDatabaseStartInfo(selectedHostUid));
-                resetAction();
-              } catch (err) {
-                endError(err);
-              }
+              requestActionConfirm({
+                title: CM.confirmStopAllDatabasesTitle,
+                description: CM.confirmStopAllDatabasesDesc,
+                confirmLabel: CM.stopAllDatabases,
+                variant: 'danger',
+                run: async () => {
+                  setLoadingText(CM.stoppingAllDatabasesMsg);
+                  startAction();
+                  try {
+                    for (const dbname of activeDatabases) {
+                      await dispatch(stopDatabase({ hostUid: selectedHostUid, dbname })).unwrap();
+                    }
+                    dispatch(fetchDatabaseStartInfo(selectedHostUid));
+                    resetAction();
+                  } catch (err) {
+                    endError(err);
+                  }
+                },
+              });
             }}
           />
           <MenuItem
             icon="restart_alt"
             label={CM.restartAllDatabases}
-            onClick={async () => {
+            onClick={() => {
               setDbRootContextMenu(null);
-              setLoadingText(CM.restartingAllDatabasesMsg);
-              startAction();
-              try {
-                const currentActive = [...activeDatabases];
-                for (const dbname of currentActive) {
-                  await dispatch(stopDatabase({ hostUid: selectedHostUid, dbname })).unwrap();
-                }
-                for (const dbname of currentActive) {
-                  await dispatch(startDatabase({ hostUid: selectedHostUid, dbname })).unwrap();
-                }
-                dispatch(fetchDatabaseStartInfo(selectedHostUid));
-                resetAction();
-              } catch (err) {
-                endError(err);
-              }
+              requestActionConfirm({
+                title: CM.confirmRestartAllDatabasesTitle,
+                description: CM.confirmRestartAllDatabasesDesc,
+                confirmLabel: CM.restartAllDatabases,
+                variant: 'danger',
+                run: async () => {
+                  setLoadingText(CM.restartingAllDatabasesMsg);
+                  startAction();
+                  try {
+                    const currentActive = [...activeDatabases];
+                    for (const dbname of currentActive) {
+                      await dispatch(stopDatabase({ hostUid: selectedHostUid, dbname })).unwrap();
+                    }
+                    for (const dbname of currentActive) {
+                      await dispatch(startDatabase({ hostUid: selectedHostUid, dbname })).unwrap();
+                    }
+                    dispatch(fetchDatabaseStartInfo(selectedHostUid));
+                    resetAction();
+                  } catch (err) {
+                    endError(err);
+                  }
+                },
+              });
             }}
           />
           <MenuDivider />
@@ -1365,47 +1410,71 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="play_circle"
             label={CM.startAllBrokers}
-            onClick={async () => {
+            onClick={() => {
               setBrokerRootContextMenu(null);
-              setLoadingText(CM.startingAllBrokersMsg);
-              startAction();
-              try {
-                await dispatch(startAllBrokers(selectedHostUid)).unwrap();
-                resetAction();
-              } catch (err) {
-                endError(err);
-              }
+              requestActionConfirm({
+                title: CM.confirmStartAllBrokersTitle,
+                description: CM.confirmStartAllBrokersDesc,
+                confirmLabel: CM.startAllBrokers,
+                variant: 'primary',
+                run: async () => {
+                  setLoadingText(CM.startingAllBrokersMsg);
+                  startAction();
+                  try {
+                    await dispatch(startAllBrokers(selectedHostUid)).unwrap();
+                    resetAction();
+                  } catch (err) {
+                    endError(err);
+                  }
+                },
+              });
             }}
           />
           <MenuItem
             icon="stop_circle"
             label={CM.stopAllBrokers}
-            onClick={async () => {
+            onClick={() => {
               setBrokerRootContextMenu(null);
-              setLoadingText(CM.stoppingAllBrokersMsg);
-              startAction();
-              try {
-                await dispatch(stopAllBrokers(selectedHostUid)).unwrap();
-                resetAction();
-              } catch (err) {
-                endError(err);
-              }
+              requestActionConfirm({
+                title: CM.confirmStopAllBrokersTitle,
+                description: CM.confirmStopAllBrokersDesc,
+                confirmLabel: CM.stopAllBrokers,
+                variant: 'danger',
+                run: async () => {
+                  setLoadingText(CM.stoppingAllBrokersMsg);
+                  startAction();
+                  try {
+                    await dispatch(stopAllBrokers(selectedHostUid)).unwrap();
+                    resetAction();
+                  } catch (err) {
+                    endError(err);
+                  }
+                },
+              });
             }}
           />
           <MenuItem
             icon="restart_alt"
             label={CM.restartAllBrokers}
-            onClick={async () => {
+            onClick={() => {
               setBrokerRootContextMenu(null);
-              setLoadingText(CM.restartingAllBrokersMsg);
-              startAction();
-              try {
-                await dispatch(stopAllBrokers(selectedHostUid)).unwrap();
-                await dispatch(startAllBrokers(selectedHostUid)).unwrap();
-                resetAction();
-              } catch (err) {
-                endError(err);
-              }
+              requestActionConfirm({
+                title: CM.confirmRestartAllBrokersTitle,
+                description: CM.confirmRestartAllBrokersDesc,
+                confirmLabel: CM.restartAllBrokers,
+                variant: 'danger',
+                run: async () => {
+                  setLoadingText(CM.restartingAllBrokersMsg);
+                  startAction();
+                  try {
+                    await dispatch(stopAllBrokers(selectedHostUid)).unwrap();
+                    await dispatch(startAllBrokers(selectedHostUid)).unwrap();
+                    resetAction();
+                  } catch (err) {
+                    endError(err);
+                  }
+                },
+              });
             }}
           />
           <MenuDivider />
@@ -1453,36 +1522,52 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="stop"
               label={CM.stopBroker}
-              onClick={async () => {
+              onClick={() => {
                 const bName = brokerContextMenu.broker;
                 setBrokerContextMenu(null);
-                setLoadingText(`${CM.stoppingBrokerNamed(bName)} ...`);
-                startAction();
-                try {
-                  await dispatch(stopBroker({ hostUid: selectedHostUid, brokerName: bName })).unwrap();
-                  dispatch(fetchBrokerList(selectedHostUid));
-                  resetAction();
-                } catch (err) {
-                  endError(err);
-                }
+                requestActionConfirm({
+                  title: CM.confirmStopBrokerTitle,
+                  description: CM.confirmStopBrokerDesc(bName),
+                  confirmLabel: CM.stopBroker,
+                  variant: 'danger',
+                  run: async () => {
+                    setLoadingText(`${CM.stoppingBrokerNamed(bName)} ...`);
+                    startAction();
+                    try {
+                      await dispatch(stopBroker({ hostUid: selectedHostUid, brokerName: bName })).unwrap();
+                      dispatch(fetchBrokerList(selectedHostUid));
+                      resetAction();
+                    } catch (err) {
+                      endError(err);
+                    }
+                  },
+                });
               }}
             />
           ) : (
             <MenuItem
               icon="play_arrow"
               label={CM.startBroker}
-              onClick={async () => {
+              onClick={() => {
                 const bName = brokerContextMenu.broker;
                 setBrokerContextMenu(null);
-                setLoadingText(`${CM.startingBrokerNamed(bName)} ...`);
-                startAction();
-                try {
-                  await dispatch(startBroker({ hostUid: selectedHostUid, brokerName: bName })).unwrap();
-                  dispatch(fetchBrokerList(selectedHostUid));
-                  resetAction();
-                } catch (err) {
-                  endError(err);
-                }
+                requestActionConfirm({
+                  title: CM.confirmStartBrokerTitle,
+                  description: CM.confirmStartBrokerDesc(bName),
+                  confirmLabel: CM.startBroker,
+                  variant: 'primary',
+                  run: async () => {
+                    setLoadingText(`${CM.startingBrokerNamed(bName)} ...`);
+                    startAction();
+                    try {
+                      await dispatch(startBroker({ hostUid: selectedHostUid, brokerName: bName })).unwrap();
+                      dispatch(fetchBrokerList(selectedHostUid));
+                      resetAction();
+                    } catch (err) {
+                      endError(err);
+                    }
+                  },
+                });
               }}
             />
           )}
@@ -1976,6 +2061,19 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
         variant="danger"
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => setBulkDeleteHostConfirm(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!pendingActionConfirm}
+        title={pendingActionConfirm?.title}
+        description={pendingActionConfirm?.description}
+        confirmLabel={pendingActionConfirm?.confirmLabel || CM.confirm}
+        variant={pendingActionConfirm?.variant || 'danger'}
+        onConfirm={() => {
+          const run = pendingActionConfirm?.run;
+          setPendingActionConfirm(null);
+          run?.();
+        }}
+        onCancel={() => setPendingActionConfirm(null)}
       />
       {isSidebarActionError && (
         <Modal isOpen title={CM.actionFailed} icon="error" iconVariant="danger" onClose={resetAction} maxWidth="400px">
