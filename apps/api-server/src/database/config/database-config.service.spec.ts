@@ -3,6 +3,7 @@ import { DatabaseConfigService } from './database-config.service';
 import { HostService } from '@host';
 import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.service';
 import { CmsConfigService } from '@cms-config/cms-config.service';
+import { DatabaseUserService } from '@database/user/database-user.service';
 import { HostError } from '@error/index';
 import { CmsError } from '@error/cms/cms-error';
 
@@ -42,6 +43,10 @@ describe('DatabaseConfigService', () => {
       setSystemParam: jest.fn(),
     };
 
+    const mockDatabaseUserService = {
+      ensureDbLogin: jest.fn().mockResolvedValue({ reauthenticated: false }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DatabaseConfigService,
@@ -56,6 +61,10 @@ describe('DatabaseConfigService', () => {
         {
           provide: CmsConfigService,
           useValue: mockCmsConfigService,
+        },
+        {
+          provide: DatabaseUserService,
+          useValue: mockDatabaseUserService,
         },
       ],
     }).compile();

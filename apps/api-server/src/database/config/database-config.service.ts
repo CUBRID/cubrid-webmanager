@@ -31,6 +31,7 @@ import {
 import { ConfigError } from '@error/config/config-error';
 import { HostService } from '@host';
 import { Injectable } from '@nestjs/common';
+import { DatabaseUserService } from '@database/user/database-user.service';
 import {
   GetAutoExecQueryCmsRequest,
   SetAutoExecQueryCmsRequest,
@@ -67,7 +68,8 @@ export class DatabaseConfigService extends BaseService {
   constructor(
     protected readonly hostService: HostService,
     protected readonly cmsClient: CmsHttpsClientService,
-    private readonly cmsConfigService: CmsConfigService
+    private readonly cmsConfigService: CmsConfigService,
+    private readonly databaseUserService: DatabaseUserService
   ) {
     super(hostService, cmsClient);
   }
@@ -107,6 +109,8 @@ export class DatabaseConfigService extends BaseService {
     dbname: string,
     autoExecQuery: SetAutoExecQueryClientRequest
   ): Promise<SetAutoExecQueryClientResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: SetAutoExecQueryCmsRequest = {
       task: 'setautoexecquery',
       dbname: dbname,
@@ -138,6 +142,8 @@ export class DatabaseConfigService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<GetAutoExecQueryClientResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: GetAutoExecQueryCmsRequest = {
       task: 'getautoexecquery',
       dbname: dbname,
@@ -200,6 +206,8 @@ export class DatabaseConfigService extends BaseService {
     hostUid: string,
     request: SetAutoStartRequest
   ): Promise<SetAutoStartResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, request.dbname);
+
     const confname = CMS_CONFNAME_CUBRID;
 
     // Get current configuration from cubridconf
@@ -315,6 +323,8 @@ export class DatabaseConfigService extends BaseService {
     hostUid: string,
     request: RemoveAutoStartRequest
   ): Promise<RemoveAutoStartResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, request.dbname);
+
     const confname = CMS_CONFNAME_CUBRID;
 
     // Get current configuration from cubridconf
@@ -394,6 +404,8 @@ export class DatabaseConfigService extends BaseService {
     dbname: string,
     request: SetAutoAddVolRequest
   ): Promise<SetAutoAddVolResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: SetAutoAddVolCmsRequest = {
       task: 'setautoaddvol',
       dbname: dbname,
@@ -429,6 +441,8 @@ export class DatabaseConfigService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<GetDbSizeClientResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: GetDbSizeCmsRequest = {
       task: 'getdbsize',
       dbname,
@@ -458,6 +472,8 @@ export class DatabaseConfigService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<GetAutoAddVolClientResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: GetAutoAddVolCmsRequest = {
       task: 'getautoaddvol',
       dbname,
@@ -497,6 +513,8 @@ export class DatabaseConfigService extends BaseService {
     dbname: string,
     request: ClassInfoRequest
   ): Promise<ClassInfoResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: ClassInfoCmsRequest = {
       task: 'classinfo',
       dbname: dbname,

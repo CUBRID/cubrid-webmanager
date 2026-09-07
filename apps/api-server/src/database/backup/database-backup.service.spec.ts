@@ -9,6 +9,7 @@ import {
   RestoreDbClientRequest,
 } from '@api-interfaces';
 import { DatabaseError } from '@error/database/database-error';
+import { DatabaseUserService } from '@database/user/database-user.service';
 import { HostError } from '@error/index';
 import { CmsError } from '@error/cms/cms-error';
 
@@ -43,6 +44,10 @@ describe('DatabaseBackupService', () => {
       postAuthenticated: jest.fn(),
     };
 
+    const mockDatabaseUserService = {
+      ensureDbLogin: jest.fn().mockResolvedValue({ reauthenticated: false }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DatabaseBackupService,
@@ -53,6 +58,10 @@ describe('DatabaseBackupService', () => {
         {
           provide: CmsHttpsClientService,
           useValue: mockCmsClient,
+        },
+        {
+          provide: DatabaseUserService,
+          useValue: mockDatabaseUserService,
         },
       ],
     }).compile();

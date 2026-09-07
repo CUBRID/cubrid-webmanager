@@ -130,6 +130,8 @@ export class DatabaseManagementService extends BaseService {
     request: CopyDbRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<CopyDbCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, request.srcdbname);
+
     const cmsRequest: CopyDbCmsRequest = {
       task: 'copydb',
       srcdbname: request.srcdbname,
@@ -192,6 +194,8 @@ export class DatabaseManagementService extends BaseService {
     request: UnloadDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<UnloadDatabaseCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     let target: 'schema' | 'object' | 'both';
 
     if (request.isSchemaIncluded && request.isDataIncluded) {
@@ -303,6 +307,8 @@ export class DatabaseManagementService extends BaseService {
     request: LoadDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<LoadDatabaseCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: LoadDatabaseCmsRequest = {
       task: 'loaddb',
       dbname: dbname,
@@ -359,6 +365,7 @@ export class DatabaseManagementService extends BaseService {
     request: OptimizeDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<OptimizeDatabaseCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
     await this.loginIfCredentialsProvided(userId, hostUid, dbname, request.dbuser, request.dbpasswd);
 
     const cmsRequest: OptimizeDatabaseCmsRequest = {
@@ -405,6 +412,8 @@ export class DatabaseManagementService extends BaseService {
     request: CheckDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<CheckDatabaseCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: CheckDatabaseCmsRequest = {
       task: 'checkdb',
       dbname: dbname,
@@ -452,6 +461,8 @@ export class DatabaseManagementService extends BaseService {
     request: CompactDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<CompactDatabaseCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: CompactDatabaseCmsRequest = {
       task: 'compactdb',
       dbname: dbname,
@@ -496,6 +507,8 @@ export class DatabaseManagementService extends BaseService {
     request: RenameDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<RenameDatabaseCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: RenameDatabaseCmsRequest = {
       task: 'renamedb',
       dbname: dbname,
@@ -537,6 +550,8 @@ export class DatabaseManagementService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<GetAddVolStatusResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: GetAddVolStatusCmsRequest = {
       task: 'getaddvolstatus',
       dbname: dbname,
@@ -586,6 +601,8 @@ export class DatabaseManagementService extends BaseService {
     request: AddVolDbRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<AddVolDbCmsResponse> {
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: AddVolDbCmsRequest = {
       task: 'addvoldb',
       dbname: dbname,

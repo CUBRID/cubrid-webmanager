@@ -144,6 +144,10 @@ export class DatabaseLifecycleService extends BaseService {
   ): Promise<StartInfoClientResponse> {
     const useHa = await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname);
     if (useHa) {
+      // Same standing policy as startNonHaDatabase — ha_start needs no
+      // dbmtuserlogin of its own, but every database action goes through
+      // this gate regardless.
+      await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
       await this.haService.haStart(userId, hostUid, dbname);
     } else {
       await this.startNonHaDatabase(userId, hostUid, dbname);
@@ -171,6 +175,10 @@ export class DatabaseLifecycleService extends BaseService {
   ): Promise<StartInfoClientResponse> {
     const useHa = await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname);
     if (useHa) {
+      // Same standing policy as stopNonHaDatabase — ha_stop needs no
+      // dbmtuserlogin of its own, but every database action goes through
+      // this gate regardless.
+      await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
       await this.haService.haStop(userId, hostUid, dbname);
     } else {
       try {
@@ -261,6 +269,7 @@ export class DatabaseLifecycleService extends BaseService {
     const useHa = await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname);
 
     if (useHa) {
+      await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
       await this.haService.haStop(userId, hostUid, dbname);
       await this.haService.haStart(userId, hostUid, dbname);
     } else {
@@ -304,12 +313,33 @@ export class DatabaseLifecycleService extends BaseService {
     const failed: Array<{ dbname: string; error: string }> = [];
 
     if (haTargets.length > 0) {
-      try {
-        await this.haService.haStart(userId, hostUid);
-        succeeded.push(...haTargets);
-      } catch (err: unknown) {
-        const error = err instanceof Error ? err.message : String(err);
-        haTargets.forEach((dbname) => failed.push({ dbname, error }));
+      // Same standing policy as startNonHaDatabase — bulk ha_start needs no
+      // dbmtuserlogin of its own, but every targeted database still goes
+      // through this gate. A target whose login fails (e.g. no stored
+      // profile) is excluded from the bulk ha_start and reported as its own
+      // failure, same as an individual startdb failure would be.
+      const loginResults = await Promise.allSettled(
+        haTargets.map((dbname) => this.databaseUserService.ensureDbLogin(userId, hostUid, dbname))
+      );
+      const loggedInHaTargets: string[] = [];
+      loginResults.forEach((result, index) => {
+        const dbname = haTargets[index];
+        if (result.status === 'fulfilled') {
+          loggedInHaTargets.push(dbname);
+        } else {
+          const error = result.reason instanceof Error ? result.reason.message : String(result.reason);
+          failed.push({ dbname, error });
+        }
+      });
+
+      if (loggedInHaTargets.length > 0) {
+        try {
+          await this.haService.haStart(userId, hostUid);
+          succeeded.push(...loggedInHaTargets);
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err.message : String(err);
+          loggedInHaTargets.forEach((dbname) => failed.push({ dbname, error }));
+        }
       }
     }
 
@@ -355,12 +385,30 @@ export class DatabaseLifecycleService extends BaseService {
     const failed: Array<{ dbname: string; error: string }> = [];
 
     if (haTargets.length > 0) {
-      try {
-        await this.haService.haStop(userId, hostUid);
-        succeeded.push(...haTargets);
-      } catch (err: unknown) {
-        const error = err instanceof Error ? err.message : String(err);
-        haTargets.forEach((dbname) => failed.push({ dbname, error }));
+      // See startAllDatabases's matching comment — same gate, same
+      // exclude-and-report-individually treatment for a failed login.
+      const loginResults = await Promise.allSettled(
+        haTargets.map((dbname) => this.databaseUserService.ensureDbLogin(userId, hostUid, dbname))
+      );
+      const loggedInHaTargets: string[] = [];
+      loginResults.forEach((result, index) => {
+        const dbname = haTargets[index];
+        if (result.status === 'fulfilled') {
+          loggedInHaTargets.push(dbname);
+        } else {
+          const error = result.reason instanceof Error ? result.reason.message : String(result.reason);
+          failed.push({ dbname, error });
+        }
+      });
+
+      if (loggedInHaTargets.length > 0) {
+        try {
+          await this.haService.haStop(userId, hostUid);
+          succeeded.push(...loggedInHaTargets);
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err.message : String(err);
+          loggedInHaTargets.forEach((dbname) => failed.push({ dbname, error }));
+        }
       }
     }
 
@@ -569,6 +617,8 @@ export class DatabaseLifecycleService extends BaseService {
     } else {
       throw DatabaseError.InternalError();
     }
+
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
 
     const spaceInfoRequest: DbSpaceInfoCmsRequest = {
       task: 'dbspaceinfo',
@@ -858,6 +908,21 @@ export class DatabaseLifecycleService extends BaseService {
       }
     }
 
+    // 2-1. Warm ensureDbLogin's cache before the config steps below when step
+    // 2 (updateUser) didn't already do it — a freshly created database's dba
+    // user always has a blank password until step 2 changes it, so logging in
+    // as dba/"" here is safe regardless of whether a profile is stored yet.
+    // Failures are swallowed: setAutoAddVol/setAutoStart below hit the same
+    // missing-login/CMS error and report it themselves, same as any other
+    // per-step failure in this function.
+    if (!updateUser?.userpass && (setAutoAddVol || setAutoStart)) {
+      try {
+        await this.databaseUserService.loginDatabase(userId, hostUid, createDbRequest.dbname, 'dba', '');
+      } catch {
+        // swallowed — see comment above
+      }
+    }
+
     // 3. Set auto-add volume if requested
     if (setAutoAddVol) {
       try {
@@ -954,6 +1019,8 @@ export class DatabaseLifecycleService extends BaseService {
         }
       );
     }
+
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
 
     const cmsRequest: DeleteDatabaseCmsRequest = {
       task: 'deletedb',
