@@ -66,6 +66,7 @@ describe('DatabaseManagementService', () => {
 
     const mockDatabaseUserService = {
       loginDatabase: jest.fn().mockResolvedValue(true),
+      ensureDbLogin: jest.fn().mockResolvedValue({ reauthenticated: false }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

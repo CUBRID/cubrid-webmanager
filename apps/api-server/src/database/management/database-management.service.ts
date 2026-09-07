@@ -622,6 +622,10 @@ export class DatabaseManagementService extends BaseService {
     dbname: string,
     _request: LockDatabaseRequest
   ): Promise<LockDatabaseResponse> {
+    // lockdb takes no dbuser/dbpasswd of its own — it relies entirely on the
+    // conlist cache a prior dbmtuserlogin populated.
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: LockDatabaseCmsRequest = {
       task: 'lockdb',
       dbname: dbname,
@@ -658,6 +662,11 @@ export class DatabaseManagementService extends BaseService {
     dbname: string,
     request: GetTransactionInfoRequest
   ): Promise<GetTransactionInfoResponse> {
+    // gettransactioninfo only reads its own dbuser/dbpasswd fields on CUBRID
+    // < 11 (ts_get_tran_info) — on 11+ it relies on the conlist cache same
+    // as lockdb/killtransaction, regardless of what's sent here.
+    await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: GetTransactionInfoCmsRequest = {
       task: 'gettransactioninfo',
       dbname: dbname,
@@ -715,6 +724,13 @@ export class DatabaseManagementService extends BaseService {
           message: `Missing required parameter for kill transaction type '${request.type}'. Expected: ${typeDescriptions[request.type] || 'parameter'}`,
         }
       );
+    }
+
+    // Only guard when the client didn't supply its own password — that
+    // password overrides conlist outright (see comment below), so there's
+    // nothing for a prior dbmtuserlogin to need to have established.
+    if (!request.dbpasswd) {
+      await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
     }
 
     // Build CMS request from client request
