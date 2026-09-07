@@ -213,7 +213,7 @@ export default function OptimizeDatabaseModal() {
     isSuccess,
     isError,
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [selectedClassName, setSelectedClassName] = useState('');
   const [jobStatus, setJobStatus] = useState(null);
   const [dbuser, setDbuser] = useState('dba');
@@ -286,9 +286,9 @@ export default function OptimizeDatabaseModal() {
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
 
-      endSuccess();
+      if (!wasBackgrounded()) endSuccess();
     } catch (err) {
-      endError(typeof err === 'string' ? err : (err.message || 'Optimization was interrupted. Check the database connection and try again.'));
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : (err.message || 'Optimization was interrupted. Check the database connection and try again.'));
     }
   };
 

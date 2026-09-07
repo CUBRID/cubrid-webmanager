@@ -48,7 +48,7 @@ export default function CopyDatabaseModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -265,10 +265,12 @@ export default function CopyDatabaseModal() {
         () => databaseJobApi.submitCopy(selectedHostUid, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      dispatch(fetchDatabaseStartInfo(selectedHostUid));
-      endSuccess(`${CM.copyCompleted}: ${formData.destName}`);
+      if (!wasBackgrounded()) {
+        dispatch(fetchDatabaseStartInfo(selectedHostUid));
+        endSuccess(`${CM.copyCompleted}: ${formData.destName}`);
+      }
     } catch (err) {
-      endError(typeof err === 'string' ? err : (err.message || CM.operationFailed));
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : (err.message || CM.operationFailed));
     }
   };
 

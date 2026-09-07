@@ -39,7 +39,7 @@ export default function CompactDatabaseModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [verbose, setVerbose] = useState(false);
@@ -65,10 +65,12 @@ export default function CompactDatabaseModal() {
         () => databaseJobApi.submitCompact(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      const log = job?.result?.log;
-      endSuccess(log || CM.optimizationComplete);
+      if (!wasBackgrounded()) {
+        const log = job?.result?.log;
+        endSuccess(log || CM.optimizationComplete);
+      }
     } catch (err) {
-      endError(typeof err === 'string' ? err : err.message || CM.compactionFailed);
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : err.message || CM.compactionFailed);
     }
   };
 

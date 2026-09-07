@@ -49,7 +49,7 @@ export default function LoadDatabaseModal() {
     isSuccess,
     isError,
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [unloadList, setUnloadList] = useState([]);
@@ -277,9 +277,9 @@ export default function LoadDatabaseModal() {
         () => databaseJobApi.submitLoad(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      endSuccess();
+      if (!wasBackgrounded()) endSuccess();
     } catch (err) {
-      endError(typeof err === 'string' ? err : (err.message || CM.failure));
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : (err.message || CM.failure));
     }
   };
 

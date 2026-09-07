@@ -82,7 +82,7 @@ export default function AddVolumeModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [volStatus, setVolStatus] = useState({ freespace: '', volpath: '' });
@@ -143,9 +143,12 @@ export default function AddVolumeModal() {
         () => databaseJobApi.submitAddVol(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      endSuccess();
+      // This job may have been backgrounded (and the modal reopened for a
+      // different database) by the time it settles — its outcome then
+      // belongs to the global job tray, not this now-reused modal instance.
+      if (!wasBackgrounded()) endSuccess();
     } catch (err) {
-      endError(typeof err === 'string' ? err : err.message || CM.failure);
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : err.message || CM.failure);
     }
   };
 

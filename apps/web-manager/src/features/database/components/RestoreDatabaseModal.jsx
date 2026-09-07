@@ -143,7 +143,7 @@ export default function RestoreDatabaseModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -493,9 +493,9 @@ export default function RestoreDatabaseModal() {
         () => databaseJobApi.submitRestore(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      endSuccess(selectedDatabase);
+      if (!wasBackgrounded()) endSuccess(selectedDatabase);
     } catch (error) {
-      endError(typeof error === 'string' ? error : (error.message || CM.restoreErrorFallback));
+      if (!wasBackgrounded()) endError(typeof error === 'string' ? error : (error.message || CM.restoreErrorFallback));
     }
   };
 

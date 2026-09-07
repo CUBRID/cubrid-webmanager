@@ -27,7 +27,7 @@ export default function CheckDatabaseModal() {
 
   const { error, startAction, endSuccess, endError, resetAction, isLoading, isSuccess, isError } =
     useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
   const [repair, setRepair] = useState(false);
 
@@ -51,9 +51,9 @@ export default function CheckDatabaseModal() {
           }),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      endSuccess();
+      if (!wasBackgrounded()) endSuccess();
     } catch (err) {
-      endError(typeof err === 'string' ? err : err.message || CM.failure);
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : err.message || CM.failure);
     }
   };
 

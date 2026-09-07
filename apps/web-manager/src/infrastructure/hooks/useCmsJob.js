@@ -12,11 +12,26 @@ export function useCmsJob({ cancelOnUnmount = false } = {}) {
   // Tracks whether the component that owns this hook instance is still
   // mounted when the job settles — but these modals are always mounted and
   // just self-gate on `return null` when closed (see App.jsx), so this alone
-  // never goes false while the app is open. backgroundedRef is the real
-  // signal: the caller must call background() from its onBackground handler
-  // to mark "I've hidden my own result UI, let the global toast show".
+  // never goes false while the app is open.
   const isMountedRef = useRef(true);
-  const backgroundedRef = useRef(false);
+
+  // background() must only affect the specific runJob() call that's
+  // currently showing loading UI — NOT any other still-in-flight call from
+  // a job the user previously backgrounded and moved on from. These modals
+  // are singletons reused for the next database the user opens the same
+  // modal for, so a backgrounded job (e.g. addvoldb on "demodb") can still
+  // be polling when the user opens the same modal again for a different
+  // database ("test2") and starts a second runJob() call. A single shared
+  // "backgrounded" boolean would get reset by that second call and corrupt
+  // the first call's own result once IT settles later. So each runJob()
+  // invocation gets its own flag object; currentFlagRef always points at
+  // the most recent one, which is the only one background() can reach.
+  const currentFlagRef = useRef(null);
+  // Set the instant a specific invocation's job settles, and read by
+  // wasBackgrounded() in the very next synchronous line after `await
+  // runJob(...)` — safe because nothing else can run in between a promise
+  // settling and its awaiter's next statement.
+  const lastSettledBackgroundedRef = useRef(false);
 
   useEffect(
     () => () => {
@@ -31,7 +46,9 @@ export function useCmsJob({ cancelOnUnmount = false } = {}) {
 
   const runJob = useCallback(
     async (submitFn, options = {}) => {
-      backgroundedRef.current = false;
+      const backgroundedFlag = { current: false };
+      currentFlagRef.current = backgroundedFlag;
+
       let capturedJobId = null;
       const wrappedSubmit = async () => {
         const created = await submitFn();
@@ -46,10 +63,12 @@ export function useCmsJob({ cancelOnUnmount = false } = {}) {
 
       try {
         const result = await contextRunJob(wrappedSubmit, options);
-        if (isMountedRef.current && !backgroundedRef.current) dismissJobResult(capturedJobId);
+        lastSettledBackgroundedRef.current = backgroundedFlag.current;
+        if (isMountedRef.current && !backgroundedFlag.current) dismissJobResult(capturedJobId);
         return result;
       } catch (err) {
-        if (isMountedRef.current && !backgroundedRef.current) dismissJobResult(capturedJobId);
+        lastSettledBackgroundedRef.current = backgroundedFlag.current;
+        if (isMountedRef.current && !backgroundedFlag.current) dismissJobResult(capturedJobId);
         throw err;
       } finally {
         jobIdRef.current = null;
@@ -65,11 +84,22 @@ export function useCmsJob({ cancelOnUnmount = false } = {}) {
     }
   }, []);
 
-  // Call from the modal's onBackground handler — marks the in-flight job so
-  // its completion isn't suppressed from the global toast/JobResultModal.
+  // Call from the modal's onBackground handler — marks the currently
+  // in-flight job (the most recent runJob() call) so its completion isn't
+  // suppressed from the global toast/JobResultModal.
   const background = useCallback(() => {
-    backgroundedRef.current = true;
+    if (currentFlagRef.current) currentFlagRef.current.current = true;
   }, []);
 
-  return { runJob, cancel, background };
+  // Callers must check this immediately after `await runJob(...)` settles,
+  // before acting on the result (e.g. calling their own endSuccess()/
+  // endError()) — see currentFlagRef's comment above for why a single
+  // shared flag isn't enough. Without this check, a job that was
+  // backgrounded (modal closed, job left running) still resolves this same
+  // runJob() call later, and the modal would flip back to its success/error
+  // view using whatever database is *currently* selected — not the one this
+  // specific job actually ran against.
+  const wasBackgrounded = useCallback(() => lastSettledBackgroundedRef.current, []);
+
+  return { runJob, cancel, background, wasBackgrounded };
 };

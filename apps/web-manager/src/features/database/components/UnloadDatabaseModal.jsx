@@ -59,7 +59,7 @@ export default function UnloadDatabaseModal() {
     isLoading,
     isError,
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -196,11 +196,13 @@ export default function UnloadDatabaseModal() {
         () => databaseJobApi.submitUnload(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      resetAction();
-      dispatch(closeUnloadDatabaseModal());
-      dispatch(openUnloadResultModal(job.result ?? {}));
+      if (!wasBackgrounded()) {
+        resetAction();
+        dispatch(closeUnloadDatabaseModal());
+        dispatch(openUnloadResultModal(job.result ?? {}));
+      }
     } catch (err) {
-      endError(typeof err === 'string' ? err : (err.message || CM.failure));
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : (err.message || CM.failure));
     }
   };
 

@@ -57,7 +57,7 @@ export default function RenameDatabaseModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob, background } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [newDbName, setNewDbName] = useState('');
@@ -102,14 +102,21 @@ export default function RenameDatabaseModal() {
         () => databaseJobApi.submitRename(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      setRenamedFromDb(selectedDatabase);
-      dispatch(fetchDatabaseStartInfo(selectedHostUid));
-      endSuccess(CM.databaseRenamedMsg(selectedDatabase, newDbName.trim()));
+      // This job may have been backgrounded (and the modal reopened for a
+      // different database) by the time it settles — its outcome then
+      // belongs to the global job tray, not this now-reused modal instance.
+      if (!wasBackgrounded()) {
+        setRenamedFromDb(selectedDatabase);
+        dispatch(fetchDatabaseStartInfo(selectedHostUid));
+        endSuccess(CM.databaseRenamedMsg(selectedDatabase, newDbName.trim()));
+      }
     } catch (err) {
-      endError(
-        typeof err === 'string' ? err
-          : err?.message || err?.note || CM.renameFailedMsg
-      );
+      if (!wasBackgrounded()) {
+        endError(
+          typeof err === 'string' ? err
+            : err?.message || err?.note || CM.renameFailedMsg
+        );
+      }
     }
   };
 

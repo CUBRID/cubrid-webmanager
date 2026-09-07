@@ -141,7 +141,14 @@ export default function CreateDatabaseModal() {
   // surfaces which follow-up steps didn't apply instead of the plain
   // success message hiding it.
   const [creationWarning, setCreationWarning] = useState(null);
-  const jobDismissedRef = useRef(false);
+  // Identifies the most recent handleFinish() call. This modal is a
+  // singleton reused for the next database the user opens it for — a
+  // shared boolean reset on every reopen (the old jobDismissedRef) meant an
+  // older, backgrounded create job could still resolve after the user
+  // reopened the modal for a different database, and would flip the modal
+  // to its success view using whatever form data is *currently* filled in
+  // instead of the database that job actually created.
+  const currentCreateInvocationRef = useRef(null);
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -167,7 +174,6 @@ export default function CreateDatabaseModal() {
     if (!selectedHostUid || hasInitializedRef.current) return;
     hasInitializedRef.current = true;
 
-    jobDismissedRef.current = false;
     setStep(1);
     resetAction();
     setFormData(INITIAL_FORM_DATA);
@@ -274,6 +280,9 @@ export default function CreateDatabaseModal() {
   const handleFinish = async () => {
     if (!selectedHostUid) return;
 
+    const invocation = { dismissed: false };
+    currentCreateInvocationRef.current = invocation;
+
     startAction();
     try {
       const exvol = formData.volumes.map(vol => ({
@@ -319,7 +328,7 @@ export default function CreateDatabaseModal() {
         () => databaseJobApi.submitCreate(selectedHostUid, payload),
         {
           onProgress: (j) => {
-            if (!jobDismissedRef.current) {
+            if (!invocation.dismissed) {
               setJobStatus(j.jobStatus ?? j.status);
             }
           },
@@ -344,11 +353,11 @@ export default function CreateDatabaseModal() {
           : null
       );
 
-      if (!jobDismissedRef.current) {
+      if (!invocation.dismissed) {
         endSuccess(CM.databaseInitializedMsg(formData.dbName));
       }
     } catch (err) {
-      if (!jobDismissedRef.current) {
+      if (!invocation.dismissed) {
         const msg =
           err?.response?.data?.note ||
           err?.response?.data?.message ||
@@ -360,8 +369,8 @@ export default function CreateDatabaseModal() {
   };
 
   const handleClose = () => {
-    if (isLoading) {
-      jobDismissedRef.current = true;
+    if (isLoading && currentCreateInvocationRef.current) {
+      currentCreateInvocationRef.current.dismissed = true;
     }
     dispatch(closeCreateDatabaseModal());
     setStep(1);
