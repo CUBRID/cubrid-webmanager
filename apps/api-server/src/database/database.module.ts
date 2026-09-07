@@ -18,6 +18,7 @@ import { DatabaseManagementService } from './management/database-management.serv
 import { DatabaseConfigController } from './config/database-config.controller';
 import { DatabaseConfigService } from './config/database-config.service';
 import { CmsJobModule } from '@cms-job/cms-job.module';
+import { CmsJobLockModule } from '@cms-job/cms-job-lock.module';
 import { BrokerModule } from '@broker';
 
 /**
@@ -52,6 +53,7 @@ import { BrokerModule } from '@broker';
     DatabaseInfoModule,
     HaModule,
     CmsJobModule,
+    CmsJobLockModule,
     BrokerModule,
   ],
 })

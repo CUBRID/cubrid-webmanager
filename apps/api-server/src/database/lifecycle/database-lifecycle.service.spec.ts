@@ -10,6 +10,7 @@ import { HaService } from '@ha';
 import { DatabaseUserService } from '../user/database-user.service';
 import { DatabaseConfigService } from '../config/database-config.service';
 import { BrokerService } from '@broker';
+import { CmsJobLockService } from '@cms-job/cms-job-lock.service';
 import { DatabaseError } from '@error/database/database-error';
 import { DatabaseErrorCode } from '@error/database/database-error-code';
 import { HostError } from '@error/index';
@@ -28,6 +29,7 @@ describe('DatabaseLifecycleService', () => {
   let databaseUserService: jest.Mocked<DatabaseUserService>;
   let databaseConfigService: jest.Mocked<DatabaseConfigService>;
   let databaseInfoService: DatabaseInfoService;
+  let cmsJobLockService: { hasActiveJobForHost: jest.Mock };
 
   const mockHost = {
     uid: 'host-uid-1',
@@ -97,6 +99,10 @@ describe('DatabaseLifecycleService', () => {
       stopAllBrokers: jest.fn().mockResolvedValue({ success: true }),
     };
 
+    const mockCmsJobLockService = {
+      hasActiveJobForHost: jest.fn().mockResolvedValue(null),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DatabaseLifecycleService,
@@ -134,6 +140,10 @@ describe('DatabaseLifecycleService', () => {
           provide: BrokerService,
           useValue: mockBrokerService,
         },
+        {
+          provide: CmsJobLockService,
+          useValue: mockCmsJobLockService,
+        },
       ],
     }).compile();
 
@@ -146,6 +156,7 @@ describe('DatabaseLifecycleService', () => {
     databaseUserService = module.get(DatabaseUserService);
     databaseConfigService = module.get(DatabaseConfigService);
     databaseInfoService = module.get(DatabaseInfoService);
+    cmsJobLockService = module.get(CmsJobLockService);
 
     // Setup default mocks
     hostService.findHostInternal.mockResolvedValue(mockHost);
@@ -290,6 +301,15 @@ describe('DatabaseLifecycleService', () => {
           dbname: mockDbname,
         })
       );
+    });
+
+    it('should throw when a CMS job is already running on this host', async () => {
+      cmsJobLockService.hasActiveJobForHost.mockResolvedValue({ jobId: 'job-1', dbname: 'otherdb' });
+
+      await expect(service.startDatabase(mockUserId, mockHostUid, mockDbname)).rejects.toThrow(
+        DatabaseError
+      );
+      expect(cmsClient.postAuthenticated).not.toHaveBeenCalled();
     });
 
     it('should throw CmsError when CMS status is fail', async () => {

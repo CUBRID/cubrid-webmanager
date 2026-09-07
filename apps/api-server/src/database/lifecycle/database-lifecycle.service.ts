@@ -10,6 +10,7 @@ import {
 import { GetCreatedbInfoClientResponse } from '@api-interfaces/response/get-createdb-info-client-response';
 import { CmsConfigService } from '@cms-config/cms-config.service';
 import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.service';
+import { CmsJobLockService } from '@cms-job/cms-job-lock.service';
 import { BaseService, HandleCmsErrors } from '@common';
 import { ConfigError } from '@error/config/config-error';
 import { ConfigErrorCode } from '@error/config/config-error-code';
@@ -67,9 +68,28 @@ export class DatabaseLifecycleService extends BaseService {
     private readonly databaseConfigService: DatabaseConfigService,
     private readonly databaseInfoService: DatabaseInfoService,
     private readonly haService: HaService,
-    private readonly brokerService: BrokerService
+    private readonly brokerService: BrokerService,
+    private readonly cmsJobLockService: CmsJobLockService
   ) {
     super(hostService, cmsClient);
+  }
+
+  /**
+   * Deliberate policy, not a CMS/engine requirement: block every service/
+   * database start-stop-restart (individual, bulk, and HA alike) while any
+   * CMS job (load/unload/backup/etc.) is actively running anywhere on this
+   * host — restarting the engine underneath a job that's mid-write risks
+   * corrupting whatever it's in the middle of.
+   */
+  private async assertNoActiveJob(userId: string, hostUid: string): Promise<void> {
+    const active = await this.cmsJobLockService.hasActiveJobForHost(userId, hostUid);
+    if (active) {
+      throw DatabaseError.OperationInProgress({
+        hostUid,
+        dbname: active.dbname,
+        existingJobId: active.jobId,
+      });
+    }
   }
 
   /** Delegates to DatabaseInfoService. */
@@ -142,6 +162,8 @@ export class DatabaseLifecycleService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<StartInfoClientResponse> {
+    await this.assertNoActiveJob(userId, hostUid);
+
     const useHa = await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname);
     if (useHa) {
       // Same standing policy as startNonHaDatabase — ha_start needs no
@@ -173,6 +195,8 @@ export class DatabaseLifecycleService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<StartInfoClientResponse> {
+    await this.assertNoActiveJob(userId, hostUid);
+
     const useHa = await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname);
     if (useHa) {
       // Same standing policy as stopNonHaDatabase — ha_stop needs no
@@ -266,6 +290,8 @@ export class DatabaseLifecycleService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<StartInfoClientResponse> {
+    await this.assertNoActiveJob(userId, hostUid);
+
     const useHa = await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname);
 
     if (useHa) {
@@ -305,6 +331,8 @@ export class DatabaseLifecycleService extends BaseService {
     hostUid: string,
     dbnames: string[]
   ): Promise<{ succeeded: string[]; failed: Array<{ dbname: string; error: string }> }> {
+    await this.assertNoActiveJob(userId, hostUid);
+
     const haDbNames = await this.databaseInfoService.getHaDbNames(userId, hostUid);
     const haTargets = [...haDbNames];
     const nonHaTargets = dbnames.filter((d) => !haDbNames.has(d));
@@ -377,6 +405,8 @@ export class DatabaseLifecycleService extends BaseService {
     hostUid: string,
     dbnames: string[]
   ): Promise<{ succeeded: string[]; failed: Array<{ dbname: string; error: string }> }> {
+    await this.assertNoActiveJob(userId, hostUid);
+
     const haDbNames = await this.databaseInfoService.getHaDbNames(userId, hostUid);
     const haTargets = [...haDbNames];
     const nonHaTargets = dbnames.filter((d) => !haDbNames.has(d));
@@ -448,6 +478,12 @@ export class DatabaseLifecycleService extends BaseService {
     userId: string,
     hostUid: string
   ): Promise<{ failed: Array<{ name: string; error: string }> }> {
+    // Checked once, up front — brokers start before databases below, and a
+    // job-in-progress error surfacing only at the database step would mean
+    // brokers already started for a service-start we should have blocked
+    // outright.
+    await this.assertNoActiveJob(userId, hostUid);
+
     const failed: Array<{ name: string; error: string }> = [];
 
     try {
@@ -496,6 +532,11 @@ export class DatabaseLifecycleService extends BaseService {
     userId: string,
     hostUid: string
   ): Promise<{ failed: Array<{ name: string; error: string }> }> {
+    // See startWholeService's matching comment — checked once, up front, so
+    // a job-in-progress block can't happen only after databases already
+    // stopped.
+    await this.assertNoActiveJob(userId, hostUid);
+
     const failed: Array<{ name: string; error: string }> = [];
 
     const startInfo = await this.databaseInfoService.startInfo(userId, hostUid);
