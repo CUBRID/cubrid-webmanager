@@ -78,6 +78,9 @@ export const databaseApi = {
   loginDatabaseWithProfile: (hostUid, dbname) => {
     return apiClient.post(`/${hostUid}/database/users/login-with-profile/${encodeURIComponent(dbname)}`, {});
   },
+  logoutDatabase: (hostUid, dbname) => {
+    return apiClient.post(`/${hostUid}/database/users/logout/${encodeURIComponent(dbname)}`, {});
+  },
   registerDatabase: (hostUid, dbname, payload) => {
     return apiClient.post(`/${hostUid}/database/register/${encodeURIComponent(dbname)}`, payload);
   },

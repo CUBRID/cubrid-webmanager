@@ -32,6 +32,8 @@ export const CM = {
   forgetDatabaseCredentials: 'Forget Saved Credentials',
   confirmForgetCredentialsTitle: 'Forget Saved Credentials',
   confirmForgetCredentialsDesc: (dbname) => `Forget the saved login for "${dbname}"? You'll need to log in again to use this database.`,
+  logoutDatabase: 'Logout Database',
+  logoutDatabaseSuccessMsg: (dbname) => `Logged out of database "${dbname}".`,
 
   transactionInformation: 'Transaction information',
   activeTransactionsOf: 'Active transactions of database:',

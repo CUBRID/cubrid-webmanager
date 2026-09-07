@@ -73,6 +73,18 @@ export const loginDatabase = createAsyncThunk(
   }
 );
 
+export const logoutDatabase = createAsyncThunk(
+  'database/logoutDatabase',
+  async ({ hostUid, dbname }, { rejectWithValue }) => {
+    try {
+      await databaseApi.logoutDatabase(hostUid, dbname);
+      return { dbname };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.response?.data?.error || `Failed to log out of database ${dbname}`);
+    }
+  }
+);
+
 export const registerDatabase = createAsyncThunk(
   'database/registerDatabase',
   async ({ hostUid, dbname, payload }, { rejectWithValue }) => {
@@ -234,6 +246,19 @@ const databaseCoreSlice = createSlice({
         const { dbname } = action.meta.arg || {};
         state.actionLoading = false;
         if (dbname) state.loggingInDatabases[dbname] = false;
+        state.error = action.payload;
+      })
+      .addCase(logoutDatabase.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(logoutDatabase.fulfilled, (state, action) => {
+        const { dbname } = action.payload;
+        state.actionLoading = false;
+        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== dbname);
+      })
+      .addCase(logoutDatabase.rejected, (state, action) => {
+        state.actionLoading = false;
         state.error = action.payload;
       })
       .addCase(registerDatabase.pending, (state) => {

@@ -30,6 +30,8 @@ export const CM_KO = {
   forgetDatabaseCredentials: '저장된 자격증명 삭제',
   confirmForgetCredentialsTitle: '저장된 자격증명 삭제',
   confirmForgetCredentialsDesc: (dbname) => `"${dbname}"에 저장된 로그인 정보를 삭제하시겠습니까? 이 데이터베이스를 다시 사용하려면 재로그인이 필요합니다.`,
+  logoutDatabase: '데이터베이스 로그아웃',
+  logoutDatabaseSuccessMsg: (dbname) => `데이터베이스 "${dbname}"에서 로그아웃했습니다.`,
 
   transactionInformation: '트랜잭션 정보',
   activeTransactionsOf: '데이터베이스의 활성 트랜잭션:',

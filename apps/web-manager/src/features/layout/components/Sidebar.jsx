@@ -18,7 +18,7 @@ import {
   refreshServerList
 } from '../../host/hostSlice';
 import {
-  fetchDatabaseStartInfo, startDatabase, stopDatabase, loginDatabase, registerDatabase, deleteDatabaseProfile,
+  fetchDatabaseStartInfo, startDatabase, stopDatabase, loginDatabase, logoutDatabase, registerDatabase, deleteDatabaseProfile,
   setSelectedDatabase, setSelectedDatabaseSubItem, clearDatabaseError, resetDatabaseState
 } from '../../database/databaseCoreSlice';
 
@@ -1230,6 +1230,29 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
                   dispatch(setSelectedDatabase(dbname));
                   dispatch(openLoginDatabaseModal(dbname));
                 }
+              }}
+            />
+          )}
+          {loggedInDatabases.includes(dbContextMenu.db) && (
+            <MenuItem
+              icon="logout"
+              label={CM.logoutDatabase}
+              onClick={() => {
+                const dbname = dbContextMenu.db;
+                setDbContextMenu(null);
+                setLoadingText(CM.processing);
+                startAction();
+                dispatch(logoutDatabase({ hostUid: selectedHostUid, dbname }))
+                  .unwrap()
+                  .then(() => {
+                    resetAction();
+                    dispatch(showStatusModal({
+                      type: 'success',
+                      title: CM.logoutDatabase,
+                      message: CM.logoutDatabaseSuccessMsg(dbname),
+                    }));
+                  })
+                  .catch((err) => endError(err));
               }}
             />
           )}
