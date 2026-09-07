@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeEditQueryPlanModal, updateAutoExecQueryPlan, fetchQueryPlan } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import Editor from '@monaco-editor/react';
 import { useCM } from '../../../constants/useCM';
 import { hasLineCommentAcrossLines, normalizeQueryForCms } from '../queryPlanUtils';
@@ -69,7 +70,7 @@ export default function EditQueryPlanModal() {
   // Initialization
   useEffect(() => {
     if (isEditQueryPlanModalOpen && selectedDatabase && selectedQueryPlanId && !isLoading && !isSuccess && !isError) {
-      const plans = queryPlans[selectedDatabase] || [];
+      const plans = queryPlans[dbKey(selectedHostUid, selectedDatabase)] || [];
       let plan = plans.find(p => p.query_id === selectedQueryPlanId);
       
       if (!plan) {

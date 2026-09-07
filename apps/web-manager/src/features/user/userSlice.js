@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getStoredLocale, setStoredLocale } from '../../constants/useCM';
 import { userApi } from './userApi';
+import { dbKey } from '../database/dbKey';
 
 export const DEFAULT_PREFERENCES = {
   dashboardInterval: 3,
@@ -132,9 +133,9 @@ const buildInitialState = () => ({
     ...DEFAULT_PREFERENCES,
     uiLocale: getStoredLocale(),
   },
-  databaseUsers: {}, // { [dbname]: [] }
-  databaseUsersLoading: {}, // { [dbname]: boolean }
-  databaseUsersError: {}, // { [dbname]: string }
+  databaseUsers: {}, // { [hostUid:dbname]: [] } — see dbKey.js
+  databaseUsersLoading: {}, // { [hostUid:dbname]: boolean }
+  databaseUsersError: {}, // { [hostUid:dbname]: string }
   isCreateUserModalOpen: false,
   isEditUserModalOpen: false,
   isDropUserModalOpen: false,
@@ -223,19 +224,24 @@ const userSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(fetchDatabaseUsers.pending, (state, action) => {
-        const { dbname } = action.meta.arg;
-        state.databaseUsersLoading[dbname] = true;
-        delete state.databaseUsersError[dbname];
+        const { hostUid, dbname } = action.meta.arg;
+        const key = dbKey(hostUid, dbname);
+        state.databaseUsersLoading[key] = true;
+        delete state.databaseUsersError[key];
       })
       .addCase(fetchDatabaseUsers.fulfilled, (state, action) => {
+        const { hostUid } = action.meta.arg;
         const { dbname, users } = action.payload;
-        state.databaseUsersLoading[dbname] = false;
-        state.databaseUsers[dbname] = users;
+        const key = dbKey(hostUid, dbname);
+        state.databaseUsersLoading[key] = false;
+        state.databaseUsers[key] = users;
       })
       .addCase(fetchDatabaseUsers.rejected, (state, action) => {
-        const { dbname, error } = action.payload || action.meta.arg;
-        state.databaseUsersLoading[dbname] = false;
-        state.databaseUsersError[dbname] = error;
+        const { hostUid, dbname: argDbname } = action.meta.arg;
+        const { dbname = argDbname, error } = action.payload || {};
+        const key = dbKey(hostUid, dbname);
+        state.databaseUsersLoading[key] = false;
+        state.databaseUsersError[key] = error;
       })
       // Create user
       .addCase(createDatabaseUser.pending, (state) => {
@@ -269,9 +275,11 @@ const userSlice = createSlice({
       })
       .addCase(dropDatabaseUser.fulfilled, (state, action) => {
         state.actionLoading = false;
+        const { hostUid } = action.meta.arg;
         const { dbname, userName } = action.payload;
-        if (state.databaseUsers[dbname]) {
-          state.databaseUsers[dbname] = state.databaseUsers[dbname].filter(u => {
+        const key = dbKey(hostUid, dbname);
+        if (state.databaseUsers[key]) {
+          state.databaseUsers[key] = state.databaseUsers[key].filter(u => {
             const currentName = typeof u === 'string' ? u : (u.name || u['@name']);
             return currentName !== userName;
           });
@@ -287,10 +295,11 @@ const userSlice = createSlice({
       .addMatcher(
         (action) => action.type === 'database/logoutDatabase/fulfilled' || action.type === 'database/deleteDatabaseProfile/fulfilled',
         (state, action) => {
-          const { dbname } = action.meta.arg;
-          delete state.databaseUsers[dbname];
-          delete state.databaseUsersLoading[dbname];
-          delete state.databaseUsersError[dbname];
+          const { hostUid, dbname } = action.meta.arg;
+          const key = dbKey(hostUid, dbname);
+          delete state.databaseUsers[key];
+          delete state.databaseUsersLoading[key];
+          delete state.databaseUsersError[key];
         }
       );
   },

@@ -19,6 +19,7 @@ import {
 } from '../../../database/databaseConfigurationSlice';
 import { fetchDatabaseUsers } from '../../../user/userSlice';
 import { openTab } from '../../layoutSlice';
+import { dbKey } from '../../../database/dbKey';
 import { TreeNode } from '../../../../components/domain/tree/TreeNode';
 import { Skeleton } from '../../../../components/ds/layout/Skeleton';
 import { Icon } from '../../../../components/ds/foundation/Icon';
@@ -152,13 +153,14 @@ export default function DatabaseTree({
       // stale right after a stop is enough to fire that first failing call,
       // and any re-render (tree re-toggle, unrelated state update) would
       // otherwise retry it immediately and reproduce the crash.
-      if (!databaseUsers[db.dbname] && !databaseUsersLoading[db.dbname] && !databaseUsersError[db.dbname]) {
+      const key = dbKey(selectedHostUid, db.dbname);
+      if (!databaseUsers[key] && !databaseUsersLoading[key] && !databaseUsersError[key]) {
         dispatch(fetchDatabaseUsers({ hostUid: selectedHostUid, dbname: db.dbname }));
       }
-      if (!backupSchedules[db.dbname] && !backupSchedulesLoading[db.dbname]) {
+      if (!backupSchedules[key] && !backupSchedulesLoading[key]) {
         dispatch(fetchBackupSchedule({ hostUid: selectedHostUid, dbname: db.dbname }));
       }
-      if (!queryPlans[db.dbname] && !queryPlansLoading[db.dbname]) {
+      if (!queryPlans[key] && !queryPlansLoading[key]) {
         dispatch(fetchQueryPlan({ hostUid: selectedHostUid, dbname: db.dbname }));
       }
     }, 50);
@@ -229,7 +231,8 @@ export default function DatabaseTree({
     <div className="space-y-0.5 px-2 py-2" onContextMenu={(e) => onRootContextMenu(e)}>
       {databases.map((db) => {
         const isActive = activeDatabases.includes(db.dbname);
-        const isLoggedIn = loggedInDatabases.includes(db.dbname);
+        const key = dbKey(selectedHostUid, db.dbname);
+        const isLoggedIn = loggedInDatabases.includes(key);
         const isDbSelected = db.dbname === selectedDatabase && !selectedDatabaseSubItem;
 
         const isDbInHa = isHostHA && haDbs.has(db.dbname);
@@ -262,7 +265,7 @@ export default function DatabaseTree({
             level={1}
             isActive={isDbSelected}
             hasChildren={true}
-            isLoading={loggingInDatabases[db.dbname]}
+            isLoading={loggingInDatabases[key]}
             status={isActive ? 'on' : 'off'}
             onToggle={() => handleDbToggle(db, isActive, isLoggedIn)}
             onSelect={() => {
@@ -280,9 +283,9 @@ export default function DatabaseTree({
               isLoggedIn={isLoggedIn}
               selectedDatabase={selectedDatabase}
               selectedDatabaseSubItem={selectedDatabaseSubItem}
-              users={databaseUsers[db.dbname]}
-              isLoading={databaseUsersLoading[db.dbname]}
-              error={databaseUsersError[db.dbname]}
+              users={databaseUsers[key]}
+              isLoading={databaseUsersLoading[key]}
+              error={databaseUsersError[key]}
               onUsersContextMenu={onUsersContextMenu}
               onUserContextMenu={onUserContextMenu}
               onSelect={handleSelectSubItem}
@@ -295,10 +298,10 @@ export default function DatabaseTree({
               isLoggedIn={isLoggedIn}
               selectedDatabase={selectedDatabase}
               selectedDatabaseSubItem={selectedDatabaseSubItem}
-              backupSchedules={backupSchedules[db.dbname]}
-              backupSchedulesLoading={backupSchedulesLoading[db.dbname]}
-              queryPlans={queryPlans[db.dbname]}
-              queryPlansLoading={queryPlansLoading[db.dbname]}
+              backupSchedules={backupSchedules[key]}
+              backupSchedulesLoading={backupSchedulesLoading[key]}
+              queryPlans={queryPlans[key]}
+              queryPlansLoading={queryPlansLoading[key]}
               onJobAutomationContextMenu={onJobAutomationContextMenu}
               onBackupPlanContextMenu={onBackupPlanContextMenu}
               onQueryPlanContextMenu={onQueryPlanContextMenu}
@@ -314,8 +317,8 @@ export default function DatabaseTree({
               isLoggedIn={isLoggedIn}
               selectedDatabase={selectedDatabase}
               selectedDatabaseSubItem={selectedDatabaseSubItem}
-              spaceInfo={spaceInfo[`${selectedHostUid}:${db.dbname}`]}
-              spaceInfoLoading={spaceInfoLoading[`${selectedHostUid}:${db.dbname}`]}
+              spaceInfo={spaceInfo[key]}
+              spaceInfoLoading={spaceInfoLoading[key]}
               onSpaceContextMenu={onSpaceContextMenu}
               onSelect={handleSelectSubItem}
               onTabOpen={handleTabOpen}

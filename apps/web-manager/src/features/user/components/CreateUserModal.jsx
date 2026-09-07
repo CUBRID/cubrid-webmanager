@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { createDatabaseUser, updateDatabaseUser, fetchDatabaseUsers } from '../userSlice';
+import { dbKey } from '../../database/dbKey';
 
 import { Icon } from '../../../components/ds/foundation/Icon';
 import { Modal } from '../../../components/ds/layout/Modal';
@@ -21,7 +22,7 @@ export default function CreateUserModal({ isOpen, onClose, dbname, editingUser }
   const isEditMode = !!editingUser;
   const { selectedHostUid } = useSelector((state) => state.host, shallowEqual);
   const { databaseUsers: allUsers } = useSelector((state) => state.user, shallowEqual);
-  const databaseUsers = allUsers[dbname] || [];
+  const databaseUsers = allUsers[dbKey(selectedHostUid, dbname)] || [];
 
   const {
     error: actionError,

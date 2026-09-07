@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeKillTransactionModal, notifyTransactionKilled } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { databaseApi } from '../databaseApi';
 import { buildKillParameter, isHaReplicationProcess } from '../transactionUtils';
 import { useCM } from '../../../constants/useCM';
@@ -25,7 +26,7 @@ export default function KillTransactionModal() {
   // killing another user's transaction. CMS otherwise falls back to whatever
   // a prior "Login Database" cached server-side, which may be stale or
   // absent — sending it directly here takes priority over that cache.
-  const alreadyLoggedIn = !!selectedDatabase && loggedInDatabases.includes(selectedDatabase);
+  const alreadyLoggedIn = !!selectedDatabase && loggedInDatabases.includes(dbKey(selectedHostUid, selectedDatabase));
 
   const {
     error: actionError,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeBackupDatabaseModal, fetchBackupDbInfo, setPendingBackupJob, clearPendingBackupJob } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { databaseJobApi } from '../databaseJobApi';
 import { useCmsJobs } from '../../../infrastructure/context/CmsJobContext';
 import { getCmsJobLoadingSubtitle } from '../../../infrastructure/cmsJob/cmsJobUi';
@@ -77,7 +78,7 @@ export default function BackupDatabaseModal() {
   const [activeTab, setActiveTab] = useState(TAB_INFO);
   const [backupInfoFetchError, setBackupInfoFetchError] = useState(false);
 
-  const backupInfo = selectedDatabase ? databaseBackupInfo[selectedDatabase] : null;
+  const backupInfo = selectedDatabase ? databaseBackupInfo[dbKey(selectedHostUid, selectedDatabase)] : null;
 
   // Keep a ref so the modal-open effect can read the latest backupInfo
   // synchronously without adding it to its own dependency array.

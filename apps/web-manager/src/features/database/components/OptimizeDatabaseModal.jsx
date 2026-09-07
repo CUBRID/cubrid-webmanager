@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeOptimizeDatabaseModal } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { databaseApi } from '../databaseApi';
 import { databaseJobApi } from '../databaseJobApi';
 import { useCmsJob } from '../../../infrastructure/hooks/useCmsJob';
@@ -226,7 +227,7 @@ export default function OptimizeDatabaseModal() {
   // optimizedb only needs credentials while online, and only to satisfy CMS's
   // per-connection login cache — if a prior "Login Database" already
   // populated that cache for this db, there's nothing new to authenticate.
-  const alreadyLoggedIn = isActive && loggedInDatabases.includes(selectedDatabase);
+  const alreadyLoggedIn = isActive && loggedInDatabases.includes(dbKey(selectedHostUid, selectedDatabase));
 
   const fetchClasses = useCallback(async () => {
     if (!selectedHostUid || !selectedDatabase) return;

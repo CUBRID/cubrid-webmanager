@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { databaseApi } from './databaseApi';
 import { isAmbiguousFailure } from '../../api/isAmbiguousFailure';
+import { dbKey } from './dbKey';
 
 export const fetchDatabaseStartInfo = createAsyncThunk(
   'database/fetchDatabaseStartInfo',
@@ -229,23 +230,25 @@ const databaseCoreSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(loginDatabase.pending, (state, action) => {
-        const { dbname, isBackground } = action.meta.arg || {};
+        const { hostUid, dbname, isBackground } = action.meta.arg || {};
         if (!isBackground) state.actionLoading = true;
-        if (dbname) state.loggingInDatabases[dbname] = true;
+        if (dbname) state.loggingInDatabases[dbKey(hostUid, dbname)] = true;
         state.error = null;
       })
       .addCase(loginDatabase.fulfilled, (state, action) => {
+        const { hostUid } = action.meta.arg || {};
         const { dbname } = action.payload;
         state.actionLoading = false;
-        if (dbname) state.loggingInDatabases[dbname] = false;
-        if (!state.loggedInDatabases.includes(dbname)) {
-          state.loggedInDatabases.push(dbname);
+        if (dbname) state.loggingInDatabases[dbKey(hostUid, dbname)] = false;
+        const key = dbKey(hostUid, dbname);
+        if (!state.loggedInDatabases.includes(key)) {
+          state.loggedInDatabases.push(key);
         }
       })
       .addCase(loginDatabase.rejected, (state, action) => {
-        const { dbname } = action.meta.arg || {};
+        const { hostUid, dbname } = action.meta.arg || {};
         state.actionLoading = false;
-        if (dbname) state.loggingInDatabases[dbname] = false;
+        if (dbname) state.loggingInDatabases[dbKey(hostUid, dbname)] = false;
         state.error = action.payload;
       })
       .addCase(logoutDatabase.pending, (state) => {
@@ -253,9 +256,11 @@ const databaseCoreSlice = createSlice({
         state.error = null;
       })
       .addCase(logoutDatabase.fulfilled, (state, action) => {
+        const { hostUid } = action.meta.arg || {};
         const { dbname } = action.payload;
         state.actionLoading = false;
-        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== dbname);
+        const key = dbKey(hostUid, dbname);
+        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== key);
       })
       .addCase(logoutDatabase.rejected, (state, action) => {
         state.actionLoading = false;
@@ -284,7 +289,9 @@ const databaseCoreSlice = createSlice({
         // Forgetting the profile also drops the server's dbmt-login cache
         // for it (deleteDbProfile clears both), so this db is no longer
         // logged in on the client either.
-        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== action.payload.dbname);
+        const { hostUid } = action.meta.arg || {};
+        const key = dbKey(hostUid, action.payload.dbname);
+        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== key);
         if (action.payload.response) {
           parseDbResponse(state, action.payload.response);
         }

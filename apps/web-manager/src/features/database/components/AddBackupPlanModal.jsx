@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeAddBackupPlanModal, addBackupSchedule, fetchBackupSchedule, fetchBackupDbInfo } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { deriveBackupDir } from '../backupPathUtils';
 import { useCM } from '../../../constants/useCM';
 
@@ -74,7 +75,7 @@ export default function AddBackupPlanModal() {
     if (isAddBackupPlanModalOpen && selectedDatabase) {
       resetAction();
       setErrors({});
-      const initialPath = deriveBackupDir(currentDb?.dbdir || databaseBackupInfo?.[selectedDatabase]?.dbdir);
+      const initialPath = deriveBackupDir(currentDb?.dbdir || databaseBackupInfo?.[dbKey(selectedHostUid, selectedDatabase)]?.dbdir);
       setFormData({
         backupLevel: '0',
         backupPath: initialPath,

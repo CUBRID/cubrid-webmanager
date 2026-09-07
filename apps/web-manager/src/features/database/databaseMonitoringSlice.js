@@ -3,16 +3,10 @@ import { databaseApi } from './databaseApi';
 import { brokerApi } from '../broker/brokerApi';
 import { buildDashboardLockRows } from './lockMappers';
 import { createRateTracker } from '../broker/rateTracker';
+import { dbKey as dashboardKey } from './dbKey';
 
 // Module-level so the previous-sample baseline survives across polls.
 const casRateTracker = createRateTracker();
-
-// All per-database dashboard/space caches below are keyed by this, not by
-// bare dbname — two different hosts routinely have a same-named database
-// (demodb, testdb, ...), and a dbname-only key means switching hosts shows
-// the PREVIOUS host's numbers (silently, no loading state) until the next
-// poll happens to overwrite them, or forever if it fails.
-const dashboardKey = (hostUid, dbname) => `${hostUid}:${dbname}`;
 
 export const fetchDatabaseVolumes = createAsyncThunk(
   'database/fetchDatabaseVolumes',

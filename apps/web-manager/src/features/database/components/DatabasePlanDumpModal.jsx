@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closePlanDumpModal, fetchDatabasePlanDump, resetPlanDumpState } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import LoadingOverlay from '../../../components/common/LoadingOverlay';
 import ErrorOverlay from '../../../components/common/ErrorOverlay';
 import { useCM } from '../../../constants/useCM';
@@ -52,7 +53,7 @@ export default function DatabasePlanDumpModal() {
     dispatch(closePlanDumpModal());
   };
 
-  const results = planDumpData[selectedDatabase] || {};
+  const results = planDumpData[dbKey(selectedHostUid, selectedDatabase)] || {};
   let lines = [];
   if (results.log && Array.isArray(results.log) && results.log.length > 0) {
     lines = results.log[0].line || [];

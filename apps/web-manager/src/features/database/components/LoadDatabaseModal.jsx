@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeLoadDatabaseModal } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { databaseApi } from '../databaseApi';
 import { databaseJobApi } from '../databaseJobApi';
 import { useCmsJob } from '../../../infrastructure/hooks/useCmsJob';
@@ -36,7 +37,7 @@ export default function LoadDatabaseModal() {
   // was still online (loggedInDatabases persists across stop, see
   // databaseCoreSlice's stopDatabase.fulfilled). Enforces the required
   // sequence: start -> Login Database -> stop -> Load.
-  const isLoggedIn = !!selectedDatabase && loggedInDatabases.includes(selectedDatabase);
+  const isLoggedIn = !!selectedDatabase && loggedInDatabases.includes(dbKey(selectedHostUid, selectedDatabase));
 
   const {
     error: actionError,

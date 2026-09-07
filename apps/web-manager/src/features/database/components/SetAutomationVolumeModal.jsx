@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeSetAutomationVolumeModal, fetchAutoVolumeConfig, updateAutoVolumeConfig } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { useCM } from '../../../constants/useCM';
 
 import { Icon } from '../../../components/ds/foundation/Icon';
@@ -160,7 +161,7 @@ export default function SetAutomationVolumeModal() {
 
   useEffect(() => {
     if (!selectedDatabase || !autoVolumeConfigs) return;
-    const config = autoVolumeConfigs[selectedDatabase];
+    const config = autoVolumeConfigs[dbKey(selectedHostUid, selectedDatabase)];
     if (config) {
       const primaryVolume = config.data === 'ON' ? 'data' : (config.index === 'ON' ? 'index' : 'data');
       const fallbackVolume = primaryVolume === 'data' ? 'index' : 'data';
@@ -171,7 +172,7 @@ export default function SetAutomationVolumeModal() {
       setCombinedThreshold(warnOutOfSpace ? Math.max(5, Math.round(parseFloat(warnOutOfSpace) * 100)) : 15);
       setCombinedAddSize(extensionPages ? Math.round(parseInt(extensionPages) * PAGE_SIZE_BYTES / BYTES_TO_MB) : 2048);
     }
-  }, [autoVolumeConfigs, selectedDatabase]);
+  }, [autoVolumeConfigs, selectedHostUid, selectedDatabase]);
 
   const handleSave = useCallback(async () => {
     startAction();

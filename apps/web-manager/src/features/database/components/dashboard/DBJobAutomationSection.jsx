@@ -8,6 +8,7 @@ import {
   openEditBackupPlanModal,
   openEditQueryPlanModal,
 } from '../../databaseSlice';
+import { dbKey } from '../../dbKey';
 import { Icon } from '../../../../components/ds/foundation/Icon';
 import { Table } from '../../../../components/ds/layout/Table';
 import { Card } from '../../../../components/ds/layout/Card';
@@ -27,12 +28,15 @@ export default function DBJobAutomationSection({ pollingProps }) {
   const { hostUid, dbname, isTabActive, autoRefresh, refreshInterval } = pollingProps;
 
   const { backupSchedules, backupSchedulesLoading, queryPlans, queryPlansLoading } = useSelector(
-    (state) => ({
-      backupSchedules: state.databaseOperation.backupSchedules[dbname],
-      backupSchedulesLoading: state.databaseOperation.backupSchedulesLoading[dbname],
-      queryPlans: state.databaseOperation.queryPlans[dbname],
-      queryPlansLoading: state.databaseOperation.queryPlansLoading[dbname],
-    }),
+    (state) => {
+      const key = dbKey(hostUid, dbname);
+      return {
+        backupSchedules: state.databaseOperation.backupSchedules[key],
+        backupSchedulesLoading: state.databaseOperation.backupSchedulesLoading[key],
+        queryPlans: state.databaseOperation.queryPlans[key],
+        queryPlansLoading: state.databaseOperation.queryPlansLoading[key],
+      };
+    },
     shallowEqual
   );
 

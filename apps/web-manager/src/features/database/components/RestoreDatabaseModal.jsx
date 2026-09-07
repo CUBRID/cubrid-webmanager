@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeRestoreDatabaseModal, fetchBackupList } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { databaseJobApi } from '../databaseJobApi';
 import { useCmsJob } from '../../../infrastructure/hooks/useCmsJob';
 import { getCmsJobLoadingSubtitle } from '../../../infrastructure/cmsJob/cmsJobUi';
@@ -175,7 +176,7 @@ export default function RestoreDatabaseModal() {
     });
   };
 
-  const backupData = databaseBackups[selectedDatabase] || {};
+  const backupData = databaseBackups[dbKey(selectedHostUid, selectedDatabase)] || {};
   const allBackups = useMemo(() => {
     return [
       ...(Array.isArray(backupData.level0) ? backupData.level0.map(b => ({ ...b, level: 0 })) : parseBackupString(backupData.level0, 0)),
@@ -190,7 +191,7 @@ export default function RestoreDatabaseModal() {
 
 
   const backups = filter === 'all' ? allBackups : allBackups.filter(b => b.level === filter);
-  const isLoadingBackups = databaseBackupsLoading[selectedDatabase];
+  const isLoadingBackups = databaseBackupsLoading[dbKey(selectedHostUid, selectedDatabase)];
 
   useEffect(() => {
     if (isRestoreDatabaseModalOpen && selectedHostUid && selectedDatabase) {

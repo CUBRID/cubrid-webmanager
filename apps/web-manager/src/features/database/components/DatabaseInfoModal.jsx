@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeDatabaseInfoModal, fetchDatabaseParamDump } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 
 import { Icon } from '../../../components/ds/foundation/Icon';
 import { Modal } from '../../../components/ds/layout/Modal';
@@ -66,7 +67,7 @@ export default function DatabaseInfoModal() {
     dispatch(closeDatabaseInfoModal());
   };
 
-  const rawData = databaseInfoData[selectedDatabase] || {};
+  const rawData = databaseInfoData[dbKey(selectedHostUid, selectedDatabase)] || {};
   const serverParams = (rawData.server && rawData.server.length > 0) ? rawData.server[0] : {};
   const clientParams = (rawData.client && rawData.client.length > 0) ? rawData.client[0] : null;
 
