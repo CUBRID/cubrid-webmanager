@@ -173,7 +173,14 @@ export default function UnloadDatabaseModal() {
         dbpasswd: formData.dbPassword || '',
         usehash: formData.useFileForHash ? 'yes' : 'no',
         hashdir: formData.useFileForHash ? formData.fileForHash : '',
-        class: (formData.schemaScope === 'all' && formData.selectedTables.length === dynamicTables.length)
+        // "all" always means unfiltered (empty class list), regardless of
+        // whether selectedTables/dynamicTables happen to match in length —
+        // comparing counts here raced against fetchTables() re-populating
+        // both on refetch, and any mismatch sent a stale/partial class
+        // filter instead of the "everything" the user actually asked for,
+        // which could unload zero classes if that stale list didn't line
+        // up with the database's real schema.
+        class: formData.schemaScope === 'all'
           ? []
           : formData.selectedTables.map((t) => ({ classname: t })),
         ref: (formData.schemaScope === 'selected' && formData.includeReferencedTables) ? 'yes' : 'no',
