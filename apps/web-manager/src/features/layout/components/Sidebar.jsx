@@ -1146,6 +1146,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="stop"
               label={CM.stopDatabase}
+              disabled={!loggedInDatabases.includes(dbContextMenu.db)}
               onClick={() => {
                 const dbName = dbContextMenu.db;
                 setDbContextMenu(null);
