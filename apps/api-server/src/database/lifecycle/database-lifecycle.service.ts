@@ -521,6 +521,25 @@ export class DatabaseLifecycleService extends BaseService {
   }
 
   /**
+   * Forgets a database's stored login profile (saved id/password) so future
+   * actions on it fall back to the manual Login Database flow.
+   *
+   * @param userId User ID from JWT
+   * @param hostUid Host UID
+   * @param dbname Database name
+   * @returns Latest start info (StartInfoClientResponse) on success
+   */
+  @HandleCmsErrors()
+  async deleteDatabaseProfile(
+    userId: string,
+    hostUid: string,
+    dbname: string
+  ): Promise<StartInfoClientResponse> {
+    await this.databaseUserService.deleteDbProfile(userId, hostUid, dbname);
+    return await this.databaseInfoService.startInfo(userId, hostUid);
+  }
+
+  /**
    * Get database volume/space information for a database on a host.
    * Returns domain-only data (CMS envelope removed).
    *

@@ -138,7 +138,14 @@ export class DatabaseUserService extends BaseService {
     return typeof message === 'string' && message.includes('Incorrect or missing password');
   }
 
-  private async deleteDbProfile(userId: string, hostUid: string, dbname: string): Promise<void> {
+  /**
+   * Forgets a database's stored login profile — used both automatically
+   * (ensureDbLogin, after a confirmed bad-password failure) and directly for
+   * a user-initiated "forget saved credentials" action. Also drops the
+   * ensureDbLogin cache entry, so the next action re-checks for a profile
+   * instead of assuming the login it just forgot is still good.
+   */
+  async deleteDbProfile(userId: string, hostUid: string, dbname: string): Promise<void> {
     await this.repository.atomicUpdateUser(userId, async (user) => {
       const host = getHost(user, hostUid);
       if (host?.dbProfiles?.[dbname]) {
@@ -146,6 +153,7 @@ export class DatabaseUserService extends BaseService {
       }
       return user;
     });
+    this.dbLoginCache.delete(`${userId}:${hostUid}:${dbname}`);
   }
 
   /**

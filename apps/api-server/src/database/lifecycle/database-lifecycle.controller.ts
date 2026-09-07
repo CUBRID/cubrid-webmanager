@@ -277,6 +277,29 @@ export class DatabaseLifecycleController {
   }
 
   /**
+   * Forget a database's stored login profile (saved id/password).
+   * Returns latest start info on success (isProfileExists is updated).
+   *
+   * @route DELETE /:hostUid/database/register/:dbname
+   * @param req Express request (contains authenticated user)
+   * @param hostUid Host unique identifier from path parameter
+   * @param dbname Database name from path parameter
+   * @returns StartInfoClientResponse Latest database start information
+   * @example
+   * // DELETE /host-uid/database/register/demodb
+   */
+  @Delete('register/:dbname')
+  async deleteDatabaseProfile(
+    @Request() req,
+    @Param('hostUid') hostUid: string,
+    @Param('dbname') dbname: string
+  ): Promise<StartInfoClientResponse> {
+    const userId = req.user.sub;
+
+    return await this.lifecycleService.deleteDatabaseProfile(userId, hostUid, dbname);
+  }
+
+  /**
    * Create a new database with optional configuration.
    * Executes database creation, user update, auto-add volume, and auto-start in sequence.
    * Returns results from all executed operations.

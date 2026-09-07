@@ -435,4 +435,29 @@ describe('DatabaseUserService', () => {
       expect(mockHost.dbProfiles).toHaveProperty('demodb');
     });
   });
+
+  describe('deleteDbProfile', () => {
+    it('removes the stored profile', async () => {
+      await service.deleteDbProfile(mockUserId, mockHostUid, 'demodb');
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+      expect(mockHost.dbProfiles).not.toHaveProperty('demodb');
+    });
+
+    it('clears the ensureDbLogin cache, so a later call re-checks for a profile', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue({
+        __EXEC_TIME: '10 ms',
+        note: 'none',
+        status: 'success',
+        task: 'dbmtuserlogin',
+      });
+      await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+
+      await service.deleteDbProfile(mockUserId, mockHostUid, 'demodb');
+
+      await expect(
+        service.ensureDbLogin(mockUserId, mockHostUid, 'demodb')
+      ).rejects.toThrow(ValidationError);
+    });
+  });
 });

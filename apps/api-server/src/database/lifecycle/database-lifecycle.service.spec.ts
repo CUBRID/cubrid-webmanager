@@ -83,6 +83,7 @@ describe('DatabaseLifecycleService', () => {
       loginDatabase: jest.fn().mockResolvedValue({}),
       getUserInfo: jest.fn().mockResolvedValue({ user: [] }),
       ensureDbLogin: jest.fn().mockResolvedValue({ reauthenticated: false }),
+      deleteDbProfile: jest.fn().mockResolvedValue(undefined),
     };
 
     const mockDatabaseConfigService = {
@@ -710,6 +711,25 @@ describe('DatabaseLifecycleService', () => {
       await expect(
         service.saveDatabaseProfile(mockUserId, mockHostUid, mockDbname, 'dba', 'password')
       ).rejects.toThrow(HostError);
+    });
+  });
+
+  describe('deleteDatabaseProfile', () => {
+    it('delegates to databaseUserService and returns latest start info', async () => {
+      const mockStartInfoResponse = {
+        activelist: { active: [] },
+        dblist: { dbs: [] },
+      };
+      jest.spyOn(databaseInfoService, 'startInfo').mockResolvedValue(mockStartInfoResponse as any);
+
+      const result = await service.deleteDatabaseProfile(mockUserId, mockHostUid, mockDbname);
+
+      expect(databaseUserService.deleteDbProfile).toHaveBeenCalledWith(
+        mockUserId,
+        mockHostUid,
+        mockDbname
+      );
+      expect(result).toEqual(mockStartInfoResponse);
     });
   });
 
