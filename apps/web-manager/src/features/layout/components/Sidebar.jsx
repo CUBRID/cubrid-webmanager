@@ -18,7 +18,7 @@ import {
   refreshServerList
 } from '../../host/hostSlice';
 import {
-  fetchDatabaseStartInfo, startDatabase, stopDatabase, loginDatabase, registerDatabase,
+  fetchDatabaseStartInfo, startDatabase, stopDatabase, loginDatabase, registerDatabase, deleteDatabaseProfile,
   setSelectedDatabase, setSelectedDatabaseSubItem, clearDatabaseError, resetDatabaseState
 } from '../../database/databaseCoreSlice';
 
@@ -1234,15 +1234,41 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             />
           )}
           {databases.find((d) => d.dbname === dbContextMenu.db)?.isProfileExists && (
-            <MenuItem
-              icon="key"
-              label={CM.updateDatabaseCredentials}
-              onClick={() => {
-                dispatch(setSelectedDatabase(dbContextMenu.db));
-                dispatch(openLoginDatabaseModal(dbContextMenu.db));
-                setDbContextMenu(null);
-              }}
-            />
+            <>
+              <MenuItem
+                icon="key"
+                label={CM.updateDatabaseCredentials}
+                onClick={() => {
+                  dispatch(setSelectedDatabase(dbContextMenu.db));
+                  dispatch(openLoginDatabaseModal(dbContextMenu.db));
+                  setDbContextMenu(null);
+                }}
+              />
+              <MenuItem
+                icon="key_off"
+                label={CM.forgetDatabaseCredentials}
+                onClick={() => {
+                  const dbname = dbContextMenu.db;
+                  setDbContextMenu(null);
+                  requestActionConfirm({
+                    title: CM.confirmForgetCredentialsTitle,
+                    description: CM.confirmForgetCredentialsDesc(dbname),
+                    confirmLabel: CM.forgetDatabaseCredentials,
+                    variant: 'danger',
+                    run: async () => {
+                      setLoadingText(CM.processing);
+                      startAction();
+                      try {
+                        await dispatch(deleteDatabaseProfile({ hostUid: selectedHostUid, dbname })).unwrap();
+                        resetAction();
+                      } catch (err) {
+                        endError(err);
+                      }
+                    },
+                  });
+                }}
+              />
+            </>
           )}
           <MenuDivider />
           <SubMenu icon="settings" label={CM.manageDatabase}>

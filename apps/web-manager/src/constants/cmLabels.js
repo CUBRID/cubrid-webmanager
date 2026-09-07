@@ -29,6 +29,9 @@ export const CM = {
   savePassword: 'Save Password',
   databaseCredentialsSaved: 'Login credentials saved for this database',
   updateDatabaseCredentials: 'Update Database Credentials',
+  forgetDatabaseCredentials: 'Forget Saved Credentials',
+  confirmForgetCredentialsTitle: 'Forget Saved Credentials',
+  confirmForgetCredentialsDesc: (dbname) => `Forget the saved login for "${dbname}"? You'll need to log in again to use this database.`,
 
   transactionInformation: 'Transaction information',
   activeTransactionsOf: 'Active transactions of database:',

@@ -81,6 +81,9 @@ export const databaseApi = {
   registerDatabase: (hostUid, dbname, payload) => {
     return apiClient.post(`/${hostUid}/database/register/${encodeURIComponent(dbname)}`, payload);
   },
+  deleteDatabaseProfile: (hostUid, dbname) => {
+    return apiClient.delete(`/${hostUid}/database/register/${encodeURIComponent(dbname)}`);
+  },
   addBackupSchedule: (hostUid, dbname, payload) => {
     return apiClient.post(`/${hostUid}/database/backup-schedule/${dbname}`, payload);
   },

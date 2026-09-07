@@ -12,6 +12,7 @@
 // Re-export all thunks and actions from new modular slices explicitly
 export {
   fetchDatabaseStartInfo, startDatabase, stopDatabase, loginDatabase, registerDatabase,
+  deleteDatabaseProfile,
   setSelectedDatabase, setSelectedDatabaseSubItem, clearDatabaseError
 } from './databaseCoreSlice';
 

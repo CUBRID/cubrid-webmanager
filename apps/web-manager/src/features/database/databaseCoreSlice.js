@@ -85,6 +85,18 @@ export const registerDatabase = createAsyncThunk(
   }
 );
 
+export const deleteDatabaseProfile = createAsyncThunk(
+  'database/deleteDatabaseProfile',
+  async ({ hostUid, dbname }, { rejectWithValue }) => {
+    try {
+      const response = await databaseApi.deleteDatabaseProfile(hostUid, dbname);
+      return { dbname, response };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.response?.data?.error || `Failed to delete saved credentials for ${dbname}`);
+    }
+  }
+);
+
 // Helper to parse the shared response format
 const parseDbResponse = (state, payload) => {
   if (!payload) return;
@@ -235,6 +247,20 @@ const databaseCoreSlice = createSlice({
         }
       })
       .addCase(registerDatabase.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteDatabaseProfile.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteDatabaseProfile.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        if (action.payload.response) {
+          parseDbResponse(state, action.payload.response);
+        }
+      })
+      .addCase(deleteDatabaseProfile.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload;
       });

@@ -27,6 +27,9 @@ export const CM_KO = {
   savePassword: '비밀번호 저장',
   databaseCredentialsSaved: '이 데이터베이스의 로그인 정보가 저장되어 있습니다',
   updateDatabaseCredentials: '데이터베이스 자격증명 변경',
+  forgetDatabaseCredentials: '저장된 자격증명 삭제',
+  confirmForgetCredentialsTitle: '저장된 자격증명 삭제',
+  confirmForgetCredentialsDesc: (dbname) => `"${dbname}"에 저장된 로그인 정보를 삭제하시겠습니까? 이 데이터베이스를 다시 사용하려면 재로그인이 필요합니다.`,
 
   transactionInformation: '트랜잭션 정보',
   activeTransactionsOf: '데이터베이스의 활성 트랜잭션:',
