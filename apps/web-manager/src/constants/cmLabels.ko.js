@@ -26,6 +26,8 @@ export const CM_KO = {
   databaseName: '데이터베이스 이름',
   savePassword: '비밀번호 저장',
   databaseCredentialsSaved: '이 데이터베이스의 로그인 정보가 저장되어 있습니다',
+  databaseLoggedIn: '이 데이터베이스에 로그인되어 있습니다',
+  databaseNotLoggedIn: '이 데이터베이스에 로그인되어 있지 않습니다',
   updateDatabaseCredentials: '데이터베이스 자격증명 변경',
   forgetDatabaseCredentials: '저장된 자격증명 삭제',
   confirmForgetCredentialsTitle: '저장된 자격증명 삭제',

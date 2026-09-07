@@ -28,6 +28,8 @@ export const CM = {
   databaseName: 'Database name',
   savePassword: 'Save Password',
   databaseCredentialsSaved: 'Login credentials saved for this database',
+  databaseLoggedIn: 'Logged in to this database',
+  databaseNotLoggedIn: 'Not logged in to this database',
   updateDatabaseCredentials: 'Update Database Credentials',
   forgetDatabaseCredentials: 'Forget Saved Credentials',
   confirmForgetCredentialsTitle: 'Forget Saved Credentials',

@@ -253,6 +253,10 @@ export default function DatabaseTree({
                 title={CM.databaseCredentialsSaved}
               />
             )}
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              title={isLoggedIn ? CM.databaseLoggedIn : CM.databaseNotLoggedIn}
+            />
           </span>
         );
 
