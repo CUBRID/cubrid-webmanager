@@ -16,7 +16,7 @@ import { setActiveMainTab } from '../layout/layoutSlice';
  */
 export function useHostActivation() {
   const dispatch = useDispatch();
-  const { authorizedHosts } = useSelector((state) => state.host, shallowEqual);
+  const { authorizedHosts, selectedHostUid } = useSelector((state) => state.host, shallowEqual);
   const loginInProgressRef = useRef(false);
 
   const activateHost = useCallback((uid) => {
@@ -24,9 +24,18 @@ export function useHostActivation() {
     if (loginInProgressRef.current) return;
 
     if (authorizedHosts.includes(uid)) {
+      // Only wipe the client's dbmt-login belief (loggedInDatabases) and
+      // broker state when this is an actual switch to a *different* host —
+      // refocusing the host you're already on (tab-away-and-back, a second
+      // single-click) must not throw away a login that's still perfectly
+      // valid server-side, or the lock icon in the tree would falsely flip
+      // back to "not logged in" on every refocus.
+      const isSwitchingHost = uid !== selectedHostUid;
       dispatch(setSelectedHost(uid));
-      dispatch(resetDatabaseState());
-      dispatch(resetBrokerState());
+      if (isSwitchingHost) {
+        dispatch(resetDatabaseState());
+        dispatch(resetBrokerState());
+      }
       dispatch(setActiveMainTab('host:' + uid));
       dispatch(fetchDatabaseStartInfo(uid));
       dispatch(fetchBrokerList(uid));
@@ -56,7 +65,7 @@ export function useHostActivation() {
       .finally(() => {
         loginInProgressRef.current = false;
       });
-  }, [dispatch, authorizedHosts]);
+  }, [dispatch, authorizedHosts, selectedHostUid]);
 
   return activateHost;
 }
