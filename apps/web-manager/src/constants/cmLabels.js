@@ -34,6 +34,8 @@ export const CM = {
   confirmForgetCredentialsDesc: (dbname) => `Forget the saved login for "${dbname}"? You'll need to log in again to use this database.`,
   logoutDatabase: 'Logout Database',
   logoutDatabaseSuccessMsg: (dbname) => `Logged out of database "${dbname}".`,
+  confirmLogoutDatabaseTitle: 'Logout Database',
+  confirmLogoutDatabaseDesc: (dbname) => `Log out of "${dbname}"? Any action on this database will require logging in again until then.`,
 
   transactionInformation: 'Transaction information',
   activeTransactionsOf: 'Active transactions of database:',

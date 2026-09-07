@@ -1240,19 +1240,27 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
               onClick={() => {
                 const dbname = dbContextMenu.db;
                 setDbContextMenu(null);
-                setLoadingText(CM.processing);
-                startAction();
-                dispatch(logoutDatabase({ hostUid: selectedHostUid, dbname }))
-                  .unwrap()
-                  .then(() => {
-                    resetAction();
-                    dispatch(showStatusModal({
-                      type: 'success',
-                      title: CM.logoutDatabase,
-                      message: CM.logoutDatabaseSuccessMsg(dbname),
-                    }));
-                  })
-                  .catch((err) => endError(err));
+                requestActionConfirm({
+                  title: CM.confirmLogoutDatabaseTitle,
+                  description: CM.confirmLogoutDatabaseDesc(dbname),
+                  confirmLabel: CM.logoutDatabase,
+                  variant: 'primary',
+                  run: async () => {
+                    setLoadingText(CM.processing);
+                    startAction();
+                    try {
+                      await dispatch(logoutDatabase({ hostUid: selectedHostUid, dbname })).unwrap();
+                      resetAction();
+                      dispatch(showStatusModal({
+                        type: 'success',
+                        title: CM.logoutDatabase,
+                        message: CM.logoutDatabaseSuccessMsg(dbname),
+                      }));
+                    } catch (err) {
+                      endError(err);
+                    }
+                  },
+                });
               }}
             />
           )}
