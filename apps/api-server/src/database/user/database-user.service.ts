@@ -9,9 +9,11 @@ import {
   HandleCmsErrors,
 } from '@common';
 import { HostService } from '@host';
+import { getHost } from '@host/host-group.util';
 import { Injectable } from '@nestjs/common';
 import { UserRepositoryService } from '@repository';
 import { DBAuthResolver } from '@util';
+import { ValidationError } from '@error/validation/validation-error';
 import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.service';
 import { BaseCmsResponse } from '@type';
 import {
@@ -30,6 +32,9 @@ import {
   UserVerifyCmsResponse,
 } from '@type/cms-response';
 
+/** How long a dbmtuserlogin is trusted before ensureDbLogin re-checks it — see ensureDbLogin's doc comment. Not yet validated against real usage; tune freely. */
+const DBMT_LOGIN_TTL_MS = 2 * 60 * 60 * 1000;
+
 /**
  * Service for managing database users.
  *
@@ -38,6 +43,14 @@ import {
  */
 @Injectable()
 export class DatabaseUserService extends BaseService {
+  // In-memory only, keyed by "userId:hostUid:dbname". CMS's own conlist
+  // (populated by dbmtuserlogin) has no expiry and is keyed by our outbound
+  // ip:port, not by any session we control — we can't ask CMS "is this still
+  // valid", we can only track "we believe we last (re-)established it here".
+  // Lost on api-server restart, which is safe: worst case is one redundant
+  // re-login next time.
+  private readonly dbLoginCache = new Map<string, { loggedInAt: number; hostToken: string }>();
+
   constructor(
     private readonly repository: UserRepositoryService,
     protected readonly cmsClient: CmsHttpsClientService,
@@ -56,6 +69,83 @@ export class DatabaseUserService extends BaseService {
     dbname: string
   ): Promise<UserInfoClientResponse> {
     return this.getUserInfo(userId, hostUid, dbname);
+  }
+
+  /**
+   * Ensures this (host, db) has a live dbmtuserlogin before a CMS task that
+   * relies on the server-side conlist cache instead of sending its own
+   * dbuser/dbpasswd (userinfo/updateuser/createuser/deleteuser, lockdb,
+   * gettransactioninfo on CUBRID 11+, killtransaction when no password is
+   * supplied). The cache here only tracks "we believe we recently
+   * (re-)logged in" — it goes stale whenever the host itself is re-logged
+   * into (token changed, so the conlist entry keyed to our old outbound
+   * connection is orphaned) or after DBMT_LOGIN_TTL_MS, since CMS never
+   * tells us the conlist entry went stale on its own.
+   *
+   * If the stored profile's password turns out to be wrong (CUBRID's own
+   * "Incorrect or missing password." error), the profile is deleted so the
+   * next attempt falls through to the manual Login Database flow instead of
+   * repeatedly failing silently against a dead password.
+   *
+   * No-ops (and never touches the cache) when no profile is stored for this
+   * db — the resulting ValidationError.MissingDBCredentials is meant to
+   * propagate and prompt for manual login, same as today.
+   */
+  async ensureDbLogin(
+    userId: string,
+    hostUid: string,
+    dbname: string
+  ): Promise<{ reauthenticated: boolean }> {
+    const host = await this.hostService.findHostInternal(userId, hostUid);
+    const key = `${userId}:${hostUid}:${dbname}`;
+    const cached = this.dbLoginCache.get(key);
+    const now = Date.now();
+
+    if (cached && cached.hostToken === host.token && now - cached.loggedInAt < DBMT_LOGIN_TTL_MS) {
+      return { reauthenticated: false };
+    }
+
+    if (!host.dbProfiles?.[dbname]) {
+      throw ValidationError.MissingDBCredentials(dbname, ['id', 'password']);
+    }
+
+    try {
+      // No clientId/clientPassword — DBAuthResolver falls through to the
+      // stored profile, and loginDatabase itself freshens the cache on
+      // success.
+      await this.loginDatabase(userId, hostUid, dbname);
+    } catch (err) {
+      if (this.isBadDbPasswordError(err)) {
+        await this.deleteDbProfile(userId, hostUid, dbname);
+      }
+      throw err;
+    }
+
+    return { reauthenticated: true };
+  }
+
+  /**
+   * Detects CUBRID's own "Incorrect or missing password." message
+   * (ER_AU_INVALID_PASSWORD, engine error -171) — the one reliable signal
+   * that a dbmtuserlogin failure was genuinely a bad password rather than a
+   * transient/unrelated one (host unreachable, database not found, etc).
+   * Fragile by nature: depends on the engine's English message catalog
+   * wording, so a locale or wording change silently stops matching — that
+   * just means we stop pruning bad profiles, not a hard failure.
+   */
+  private isBadDbPasswordError(err: unknown): boolean {
+    const message = (err as { additionalData?: { message?: unknown } })?.additionalData?.message;
+    return typeof message === 'string' && message.includes('Incorrect or missing password');
+  }
+
+  private async deleteDbProfile(userId: string, hostUid: string, dbname: string): Promise<void> {
+    await this.repository.atomicUpdateUser(userId, async (user) => {
+      const host = getHost(user, hostUid);
+      if (host?.dbProfiles?.[dbname]) {
+        delete host.dbProfiles[dbname];
+      }
+      return user;
+    });
   }
 
   /**
@@ -86,6 +176,14 @@ export class DatabaseUserService extends BaseService {
       cmsRequest
     );
 
+    // Freshen ensureDbLogin's cache regardless of which credentials were
+    // used (profile or client-provided) — any successful dbmtuserlogin
+    // establishes the same server-side conlist state it checks for.
+    this.dbLoginCache.set(`${userId}:${hostUid}:${dbname}`, {
+      loggedInAt: Date.now(),
+      hostToken: host.token,
+    });
+
     return true;
   }
 
@@ -102,6 +200,8 @@ export class DatabaseUserService extends BaseService {
     groups: { group: string[] },
     authorization: string[]
   ): Promise<UpdateDbUserResponse> {
+    await this.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: UpdateUserCmsRequest = {
       task: 'updateuser',
       dbname,
@@ -129,6 +229,8 @@ export class DatabaseUserService extends BaseService {
     hostUid: string,
     dbname: string
   ): Promise<{ dbname: string; user: Array<Record<string, unknown>> }> {
+    await this.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: UserInfoCmsRequest = { task: 'userinfo', dbname };
 
     const response = await this.executeCmsRequest<UserInfoCmsRequest, UserInfoCmsResponse>(
@@ -156,6 +258,8 @@ export class DatabaseUserService extends BaseService {
     groups: { group: string[] },
     authorization: unknown[]
   ): Promise<CreateDbUserResponse> {
+    await this.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: CreateUserCmsRequest = {
       task: 'createuser',
       dbname,
@@ -184,6 +288,8 @@ export class DatabaseUserService extends BaseService {
     dbname: string,
     username: string
   ): Promise<DeleteDbUserResponse> {
+    await this.ensureDbLogin(userId, hostUid, dbname);
+
     const cmsRequest: DeleteUserCmsRequest = {
       task: 'deleteuser',
       dbname,
