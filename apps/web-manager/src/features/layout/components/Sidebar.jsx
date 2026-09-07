@@ -1307,22 +1307,62 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
               disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
               onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openLoadDatabaseModal(dbContextMenu.db)); setDbContextMenu(null); }}
             />
-            <MenuItem icon="check_circle" label={CM.manageDatabaseMenu.check} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openCheckDatabaseModal()); setDbContextMenu(null); }} />
-            <MenuItem icon="compress" label={CM.manageDatabaseMenu.compact} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openCompactDatabaseModal()); setDbContextMenu(null); }} />
-            <MenuItem icon="add_to_drive" label={CM.manageDatabaseMenu.addVol} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openAddVolumeModal()); setDbContextMenu(null); }} />
+            <MenuItem
+              icon="check_circle"
+              label={CM.manageDatabaseMenu.check}
+              disabled={!loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openCheckDatabaseModal()); setDbContextMenu(null); }}
+            />
+            <MenuItem
+              icon="compress"
+              label={CM.manageDatabaseMenu.compact}
+              disabled={!loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openCompactDatabaseModal()); setDbContextMenu(null); }}
+            />
+            <MenuItem
+              icon="add_to_drive"
+              label={CM.manageDatabaseMenu.addVol}
+              disabled={!loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openAddVolumeModal()); setDbContextMenu(null); }}
+            />
             <MenuItem
               icon="auto_fix_high"
               label={CM.manageDatabaseMenu.optimize}
-              disabled={dbContextMenu.isActive}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
               onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openOptimizeDatabaseModal()); setDbContextMenu(null); }}
             />
-            <MenuItem icon="content_copy" label={CM.manageDatabaseMenu.copy} disabled={dbContextMenu.isActive} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openCopyDatabaseModal()); setDbContextMenu(null); }} />
+            <MenuItem
+              icon="content_copy"
+              label={CM.manageDatabaseMenu.copy}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openCopyDatabaseModal()); setDbContextMenu(null); }}
+            />
             <MenuDivider />
-            <MenuItem icon="drive_file_rename_outline" label={CM.manageDatabaseMenu.rename} disabled={dbContextMenu.isActive} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openRenameDatabaseModal()); setDbContextMenu(null); }} />
-            <MenuItem icon="restore" label={CM.manageDatabaseMenu.restore} disabled={dbContextMenu.isActive} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openRestoreDatabaseModal()); setDbContextMenu(null); }} />
-            <MenuItem icon="backup" label={CM.manageDatabaseMenu.backup} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openBackupDatabaseModal()); setDbContextMenu(null); }} />
+            <MenuItem
+              icon="drive_file_rename_outline"
+              label={CM.manageDatabaseMenu.rename}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openRenameDatabaseModal()); setDbContextMenu(null); }}
+            />
+            <MenuItem
+              icon="restore"
+              label={CM.manageDatabaseMenu.restore}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openRestoreDatabaseModal()); setDbContextMenu(null); }}
+            />
+            <MenuItem
+              icon="backup"
+              label={CM.manageDatabaseMenu.backup}
+              disabled={!loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openBackupDatabaseModal()); setDbContextMenu(null); }}
+            />
             <MenuDivider />
-            <MenuItem icon="delete" label={CM.manageDatabaseMenu.delete} disabled={dbContextMenu.isActive} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openDeleteDatabaseModal(dbContextMenu.db)); setDbContextMenu(null); }} />
+            <MenuItem
+              icon="delete"
+              label={CM.manageDatabaseMenu.delete}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
+              onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openDeleteDatabaseModal(dbContextMenu.db)); setDbContextMenu(null); }}
+            />
           </SubMenu>
 
           <SubMenu icon="info" label={CM.databaseInfoMenu} width="w-52">
@@ -1341,6 +1381,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="data_object"
               label={`${CM.paramDump}`}
+              disabled={!loggedInDatabases.includes(dbContextMenu.db)}
               onClick={() => {
                 dispatch(setSelectedDatabase(dbContextMenu.db));
                 dispatch(openDatabaseInfoModal());
@@ -1350,7 +1391,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="schema"
               label={`${CM.planDump}`}
-              disabled={!dbContextMenu.isActive}
+              disabled={!dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
               onClick={() => {
                 dispatch(setSelectedDatabase(dbContextMenu.db));
                 dispatch(openPlanDumpModal());
@@ -1358,9 +1399,14 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
               }}
             />
           </SubMenu>
-          
+
           <MenuDivider />
-          <MenuItem icon="tune" label={CM.properties} onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openDatabasePropertyModal()); setDbContextMenu(null); }} />
+          <MenuItem
+            icon="tune"
+            label={CM.properties}
+            disabled={!loggedInDatabases.includes(dbContextMenu.db)}
+            onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openDatabasePropertyModal()); setDbContextMenu(null); }}
+          />
           <MenuDivider />
           <MenuItem
             icon="refresh"
@@ -1865,6 +1911,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="refresh"
             label={CM.refresh}
+            disabled={!usersContextMenu.isLoggedIn}
             onClick={() => {
               dispatch(fetchDatabaseUsers({ hostUid: selectedHostUid, dbname: usersContextMenu.db }));
               setUsersContextMenu(null);
@@ -1901,6 +1948,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="refresh"
             label={CM.refresh}
+            disabled={!userContextMenu.isLoggedIn}
             onClick={() => {
               dispatch(fetchDatabaseUsers({ hostUid: selectedHostUid, dbname: userContextMenu.db }));
               setUserContextMenu(null);
@@ -1937,6 +1985,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="refresh"
             label={CM.refresh}
+            disabled={!backupPlanContextMenu.isLoggedIn}
             onClick={() => {
               if (selectedHostUid) {
                 dispatch(fetchBackupSchedule({ hostUid: selectedHostUid, dbname: backupPlanContextMenu.db }));
@@ -1994,6 +2043,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="refresh"
             label={CM.refresh}
+            disabled={!spaceContextMenu.isLoggedIn}
             onClick={() => {
               dispatch(fetchDatabaseSpaceInfo({ hostUid: selectedHostUid, dbname: spaceContextMenu.db }));
               setSpaceContextMenu(null);
@@ -2035,6 +2085,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="refresh"
             label={CM.refresh}
+            disabled={!backupItemContextMenu.isLoggedIn}
             onClick={() => {
               dispatch(fetchBackupSchedule({ hostUid: selectedHostUid, dbname: backupItemContextMenu.db }));
               setBackupItemContextMenu(null);
@@ -2072,6 +2123,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="refresh"
             label={CM.refresh}
+            disabled={!queryPlanContextMenu.isLoggedIn}
             onClick={() => {
               if (selectedHostUid) {
                 dispatch(fetchQueryPlan({ hostUid: selectedHostUid, dbname: queryPlanContextMenu.db }));
@@ -2112,6 +2164,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
           <MenuItem
             icon="refresh"
             label={CM.refresh}
+            disabled={!queryItemContextMenu.isLoggedIn}
             onClick={() => {
               if (selectedHostUid) {
                 dispatch(fetchQueryPlan({ hostUid: selectedHostUid, dbname: queryItemContextMenu.db }));
