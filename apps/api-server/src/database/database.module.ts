@@ -4,8 +4,7 @@ import { DatabaseService } from './database.service';
 import { HostModule } from '@host';
 import { CmsHttpsClientModule } from '@cms-https-client/cms-https-client.module';
 import { UserRepositoryModule } from '@repository';
-import { DatabaseUserController } from './user/database-user.controller';
-import { DatabaseUserService } from './user/database-user.service';
+import { DatabaseUserModule } from './user/database-user.module';
 import { CmsConfigModule } from '@cms-config/cms-config.module';
 import { FileModule } from '@file/file.module';
 import { DatabaseInfoModule } from './info/database-info.module';
@@ -31,7 +30,6 @@ import { BrokerModule } from '@broker';
 @Module({
   controllers: [
     DatabaseController,
-    DatabaseUserController,
     DatabaseLifecycleController,
     DatabaseBackupController,
     DatabaseManagementController,
@@ -39,7 +37,6 @@ import { BrokerModule } from '@broker';
   ],
   providers: [
     DatabaseService,
-    DatabaseUserService,
     DatabaseLifecycleService,
     DatabaseBackupService,
     DatabaseManagementService,
@@ -49,6 +46,7 @@ import { BrokerModule } from '@broker';
     HostModule,
     CmsHttpsClientModule,
     UserRepositoryModule,
+    DatabaseUserModule,
     CmsConfigModule,
     FileModule,
     DatabaseInfoModule,
