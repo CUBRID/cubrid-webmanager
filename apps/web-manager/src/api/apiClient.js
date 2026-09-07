@@ -92,6 +92,19 @@ if (initialToken) {
 }
 
 const refreshingHosts = new Map();
+// Circuit breaker for the silent "session expired -> revoke, re-login,
+// retry" path below: each cycle is one dispatch(revokeHostLogin) +
+// dispatch(loginToHost) + one retried request. If the underlying CMS
+// session can't actually be restored (host unreachable, stale creds that
+// "succeed" but still don't authenticate, etc.), every poll tick and every
+// in-flight request independently re-triggers this same cycle with no
+// timer gating it — each retry's own 401 fires it again, spinning as fast
+// as the promises resolve (seen live: ~10 requests/sec). After
+// AUTO_RELOGIN_MAX_ATTEMPTS failures for a host within the window, stop
+// silently retrying and fall back to the reconnect modal instead.
+const hostAutoReloginFailures = new Map();
+const AUTO_RELOGIN_MAX_ATTEMPTS = 3;
+const AUTO_RELOGIN_WINDOW_MS = 15000;
 let isHandlingSystemSessionExpiry = false;
 let isRefreshingAccessToken = false;
 /** @type {Array<{ resolve: (token: string) => void, reject: (err: Error) => void }>} */
@@ -202,6 +215,12 @@ apiClient.interceptors.response.use(
       if (hostUid) lastLoginSuccessAt.set(hostUid, Date.now());
     }
 
+    // Any successful response for a host means its session is genuinely
+    // fine again — reset the circuit breaker so a future real disconnect
+    // gets its own fresh attempts instead of inheriting an old count.
+    const successHostUid = getHostUidFromUrl(response.config?.url);
+    if (successHostUid) hostAutoReloginFailures.delete(successHostUid);
+
     const rawData = response.data;
     if (rawData && typeof rawData === 'object' && Object.prototype.hasOwnProperty.call(rawData, 'data')) {
       if (rawData.data === false || rawData.data === null || rawData.data === 0) {
@@ -299,6 +318,31 @@ apiClient.interceptors.response.use(
           } catch (e) {
             reconnectingHosts.delete(hostUid);
             console.error('Failed to dispatch reconnect modal:', e);
+          }
+          return Promise.reject(error);
+        }
+
+        const failureEntry = hostAutoReloginFailures.get(hostUid);
+        const now = Date.now();
+        if (failureEntry && now - failureEntry.windowStart < AUTO_RELOGIN_WINDOW_MS) {
+          failureEntry.count += 1;
+        } else {
+          hostAutoReloginFailures.set(hostUid, { count: 1, windowStart: now });
+        }
+
+        if (hostAutoReloginFailures.get(hostUid).count > AUTO_RELOGIN_MAX_ATTEMPTS) {
+          console.warn(
+            `Host ${hostUid} exceeded ${AUTO_RELOGIN_MAX_ATTEMPTS} silent re-login attempts within ${AUTO_RELOGIN_WINDOW_MS}ms — its session can't actually be restored, stopping the retry loop and showing the reconnect modal instead.`
+          );
+          if (!reconnectingHosts.has(hostUid)) {
+            reconnectingHosts.add(hostUid);
+            try {
+              const { store } = await import('../app/store');
+              store.dispatch(hostActions.openReconnectModal(hostUid));
+            } catch (e) {
+              reconnectingHosts.delete(hostUid);
+              console.error('Failed to dispatch openReconnectModal:', e);
+            }
           }
           return Promise.reject(error);
         }
