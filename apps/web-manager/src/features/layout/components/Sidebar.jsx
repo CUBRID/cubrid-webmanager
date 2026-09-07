@@ -1205,12 +1205,26 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
               onClick={() => {
                 const dbname = dbContextMenu.db;
                 setDbContextMenu(null);
-                // Match double-click activation's rule (DatabaseTree's
-                // handleDbActivate): a saved profile logs in silently, no
-                // modal — the modal is only for when there's nothing saved
-                // to log in with yet.
+                // Same rule DatabaseTree's double-click activation uses: a
+                // saved profile logs in without asking for the password
+                // again — but still visibly, with a loading state and a
+                // completion confirmation, not silently in the background.
+                // The modal (full manual entry) is only for when there's
+                // nothing saved to log in with yet.
                 if (databases.find((d) => d.dbname === dbname)?.isProfileExists) {
-                  dispatch(loginDatabase({ hostUid: selectedHostUid, dbname, isBackground: true }));
+                  setLoadingText(`${CM.loggingInto(dbname)} ...`);
+                  startAction();
+                  dispatch(loginDatabase({ hostUid: selectedHostUid, dbname }))
+                    .unwrap()
+                    .then(() => {
+                      resetAction();
+                      dispatch(showStatusModal({
+                        type: 'success',
+                        title: CM.loginDatabase,
+                        message: CM.connectionSuccessful,
+                      }));
+                    })
+                    .catch((err) => endError(err));
                 } else {
                   dispatch(setSelectedDatabase(dbname));
                   dispatch(openLoginDatabaseModal(dbname));
@@ -1265,7 +1279,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="lock_open"
               label={`${CM.lockingInformation}...`}
-              disabled={!dbContextMenu.isActive}
+              disabled={!dbContextMenu.isActive || !loggedInDatabases.includes(dbContextMenu.db)}
               onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openLockInformationModal()); setDbContextMenu(null); }}
             />
             <MenuItem
