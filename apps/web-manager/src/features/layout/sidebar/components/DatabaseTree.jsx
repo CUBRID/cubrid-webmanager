@@ -397,7 +397,9 @@ const JobAutomationFolder = React.memo(({ db, isActive, isLoggedIn, selectedData
       isActive={isSelected}
       hasChildren={true}
       onToggle={() => {
-        if (selectedHostUid) {
+        // Same rule as UsersFolder's onToggle — never fetch per-db data
+        // (backup schedules, query plans) before an actual dbmtuserlogin.
+        if (selectedHostUid && isActive && isLoggedIn) {
           if (!backupSchedules && !backupSchedulesLoading) {
             dispatch(fetchBackupSchedule({ hostUid: selectedHostUid, dbname: db.dbname }));
           }
@@ -531,8 +533,9 @@ const SpaceFolder = React.memo(({ db, isActive, isLoggedIn, selectedDatabase, se
       onDoubleClick={() => onTabOpen(`db_space:${selectedHostUid}:${db.dbname}`)}
       onContextMenu={(e) => onSpaceContextMenu(e, db.dbname, isActive, isLoggedIn)}
       onToggle={() => {
-        // Only fetch if we have a host, aren't already loading, AND the data is genuinely missing
-        if (selectedHostUid && !spaceInfoLoading && !spaceInfo) {
+        // Same rule as UsersFolder/JobAutomationFolder's onToggle — never
+        // fetch per-db data (space info) before an actual dbmtuserlogin.
+        if (selectedHostUid && isActive && isLoggedIn && !spaceInfoLoading && !spaceInfo) {
           dispatch(fetchDatabaseSpaceInfo({ hostUid: selectedHostUid, dbname: db.dbname }));
         }
       }}
