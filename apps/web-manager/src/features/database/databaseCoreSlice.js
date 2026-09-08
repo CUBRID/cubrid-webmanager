@@ -150,11 +150,23 @@ const parseDbResponse = (state, payload) => {
       state.selectedDatabaseSubItem = null;
     }
   }
+
+  // Static ha_db_list membership from cubrid_ha.conf — deliberately separate
+  // from any live-heartbeat-based HA signal, which can read "not HA" while
+  // the pair is genuinely down or mid-recovery (see haDbNames comment on
+  // StartInfoClientResponse).
+  if (payload.haDbNames !== undefined) {
+    const newHaDbNames = Array.isArray(payload.haDbNames) ? payload.haDbNames : [];
+    if (JSON.stringify(state.haDbNames) !== JSON.stringify(newHaDbNames)) {
+      state.haDbNames = newHaDbNames;
+    }
+  }
 };
 
 const initialState = {
   databases: [],
   activeDatabases: [],
+  haDbNames: [],
   selectedDatabase: null,
   selectedDatabaseSubItem: null,
   loggedInDatabases: [],
@@ -183,6 +195,7 @@ const databaseCoreSlice = createSlice({
     resetDatabaseState: (state) => {
       state.databases = [];
       state.activeDatabases = [];
+      state.haDbNames = [];
       state.selectedDatabase = null;
       state.selectedDatabaseSubItem = null;
       state.loggedInDatabases = [];

@@ -22,7 +22,6 @@ import {
   setSelectedDatabase, setSelectedDatabaseSubItem, clearDatabaseError, resetDatabaseState
 } from '../../database/databaseCoreSlice';
 import { dbKey } from '../../database/dbKey';
-import { isDatabaseInHa } from '../../host/haPeerUtils';
 
 import {
   fetchDatabaseVolumes, fetchDatabaseSpaceInfo, fetchDashboardVolumes, fetchDashboardLocks,
@@ -168,7 +167,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
   const requestActionConfirm = (config) => setPendingActionConfirm(config);
 
   const { hosts, hostGroups, selectedHostUid, selectedGroupUid, loading: hostsLoading, authorizedHosts, isLoggingIntoHost, hostAuthErrors, haInfo } = useSelector((state) => state.host, shallowEqual);
-  const { databases, activeDatabases, loggedInDatabases } = useSelector((state) => state.database, shallowEqual);
+  const { databases, activeDatabases, loggedInDatabases, haDbNames } = useSelector((state) => state.database, shallowEqual);
   const { brokers, logsLoading, adminLogsLoading, cmsLogsLoading, dbLogsLoading } = useSelector((state) => state.broker, shallowEqual);
   const isRefreshingLogs = logsLoading || adminLogsLoading || cmsLogsLoading || dbLogsLoading;
   // Some Manage Database operations are unsafe (or outright break HA
@@ -187,8 +186,13 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
   //    (the slave's replication-resume bookmark) — CUBRID ships a dedicated
   //    `restoreslave` utility that resets it to the restored LSA specifically
   //    because plain restoredb leaves it stale, which webmanager never uses.
-  const selectedHostHaHeartbeat = useSelector((state) => state.monitoring.hostsData[selectedHostUid]?.haHeartbeat);
-  const isSelectedDbInHa = isDatabaseInHa(selectedHostHaHeartbeat, dbContextMenu?.db);
+  //
+  // Gated on haDbNames (static cubrid_ha.conf ha_db_list membership, carried
+  // on start-info — see StartInfoClientResponse), NOT live heartbeat
+  // presence: a genuinely-disconnected/mid-recovery HA pair can report no
+  // live heartbeat at all, which would wrongly read as "not HA" and silently
+  // re-enable exactly the operations that are dangerous in that state.
+  const isSelectedDbInHa = haDbNames.includes(dbContextMenu?.db);
 
 
   useEffect(() => {

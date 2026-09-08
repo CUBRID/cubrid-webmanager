@@ -4,6 +4,7 @@ import { loginToHostWithSideEffects, fetchHostEnv, openEditHostModal, setSelecte
 import { resetDatabaseState, fetchDatabaseStartInfo } from '../database/databaseCoreSlice';
 import { resetBrokerState, fetchBrokerList } from '../broker/brokerSlice';
 import { setActiveMainTab } from '../layout/layoutSlice';
+import { fetchHaHeartbeatOnly } from '../server/monitoringSlice';
 
 /**
  * Logs into a host (if not already authorized) then opens its dashboard tab.
@@ -16,8 +17,21 @@ import { setActiveMainTab } from '../layout/layoutSlice';
  */
 export function useHostActivation() {
   const dispatch = useDispatch();
-  const { authorizedHosts, selectedHostUid } = useSelector((state) => state.host, shallowEqual);
+  const { authorizedHosts, selectedHostUid, haInfo } = useSelector((state) => state.host, shallowEqual);
   const loginInProgressRef = useRef(false);
+
+  // Sidebar's per-database HA gates (Load/Rename/Restore/Delete Database)
+  // read state.monitoring.hostsData[hostUid].haHeartbeat, but nothing was
+  // fetching it unless the Server Dashboard tab happened to be open — so
+  // right-clicking a database straight from the tree saw no heartbeat data
+  // and never disabled those items. Kick this off as soon as the host is
+  // known to be HA (haInfo is set at login and persisted across sessions),
+  // so it's populated well before the user reaches a context menu.
+  const primeHaHeartbeat = useCallback((uid) => {
+    if (haInfo[uid]?.isHA) {
+      dispatch(fetchHaHeartbeatOnly(uid));
+    }
+  }, [dispatch, haInfo]);
 
   const activateHost = useCallback((uid) => {
     if (!uid) return;
@@ -40,6 +54,7 @@ export function useHostActivation() {
       dispatch(fetchDatabaseStartInfo(uid));
       dispatch(fetchBrokerList(uid));
       dispatch(fetchHostEnv(uid));
+      primeHaHeartbeat(uid);
       return;
     }
 
@@ -54,6 +69,7 @@ export function useHostActivation() {
         dispatch(fetchDatabaseStartInfo(uid));
         dispatch(fetchBrokerList(uid));
         dispatch(fetchHostEnv(uid));
+        primeHaHeartbeat(uid);
       })
       .catch((err) => {
         console.error('Failed to log into host:', err);
@@ -65,7 +81,7 @@ export function useHostActivation() {
       .finally(() => {
         loginInProgressRef.current = false;
       });
-  }, [dispatch, authorizedHosts, selectedHostUid]);
+  }, [dispatch, authorizedHosts, selectedHostUid, primeHaHeartbeat]);
 
   return activateHost;
 }

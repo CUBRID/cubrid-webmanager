@@ -60,9 +60,12 @@ export class DatabaseInfoService extends BaseService {
    */
   @HandleCmsErrors()
   async startInfo(userId: string, hostUid: string): Promise<StartInfoClientResponse> {
-    const host = await this.hostService.findHostInternal(userId, hostUid);
-    const cmsStart = await this.startInfoInternal(userId, hostUid);
-    return mapStartInfoToClientResponse(cmsStart, host.dbProfiles);
+    const [host, cmsStart, haDbNames] = await Promise.all([
+      this.hostService.findHostInternal(userId, hostUid),
+      this.startInfoInternal(userId, hostUid),
+      this.getHaDbNames(userId, hostUid),
+    ]);
+    return mapStartInfoToClientResponse(cmsStart, host.dbProfiles, haDbNames);
   }
 
   /**

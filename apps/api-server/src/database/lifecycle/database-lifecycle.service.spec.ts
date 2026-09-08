@@ -204,6 +204,7 @@ describe('DatabaseLifecycleService', () => {
           },
         ],
       },
+      haDbNames: [],
     };
 
     it('should return start info with profile existence', async () => {
@@ -227,6 +228,7 @@ describe('DatabaseLifecycleService', () => {
             },
           ],
         },
+        haDbNames: [],
       });
     });
 
