@@ -291,6 +291,19 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
+        // Once the reconnect modal is already up for this host, every branch
+        // below (INVALID_TOKEN and the generic-401 counter) must stay quiet —
+        // otherwise the generic-401 branch's own 15s window resets on its
+        // own schedule and, unaware the modal is already open, walks back
+        // through up to AUTO_RELOGIN_MAX_ATTEMPTS more full revoke+re-login+
+        // retry cycles every time it lapses, as long as polling keeps firing
+        // new requests against a host that never actually reconnected —
+        // reproducing the exact "~10 requests/sec" storm this file already
+        // has a breaker for, just on a ~15s duty cycle instead of instantly.
+        if (reconnectingHosts.has(hostUid)) {
+          return Promise.reject(error);
+        }
+
         // If the server explicitly signals an invalid/stolen token (CMS session takeover),
         // do NOT silently re-login — show the Reconnect modal so the user can decide.
         // We keep the host in authorizedHosts so all UI state stays intact.
@@ -298,10 +311,7 @@ apiClient.interceptors.response.use(
         const isInvalidTokenError = errorCode === 'INVALID_TOKEN';
 
         if (isInvalidTokenError) {
-          // If we're already waiting for the user to reconnect, silently drop this 401.
-          if (reconnectingHosts.has(hostUid)) {
-            return Promise.reject(error);
-          }
+          // (Already-reconnecting hosts are dropped by the guard above.)
           // A request in flight before a fresh (re)login can still land its 401
           // after that login already succeeded — that's a stale race, not an
           // actual takeover, so don't second-guess the session that's already valid.
