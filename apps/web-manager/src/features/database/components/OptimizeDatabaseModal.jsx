@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeOptimizeDatabaseModal } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { databaseApi } from '../databaseApi';
 import { databaseJobApi } from '../databaseJobApi';
 import { useCmsJob } from '../../../infrastructure/hooks/useCmsJob';
@@ -199,9 +200,9 @@ export default function OptimizeDatabaseModal() {
   const CM = useCM();
   const dispatch = useDispatch();
   const { isOptimizeDatabaseModalOpen } = useSelector((state) => state.databaseUI, shallowEqual);
-  const { selectedDatabase, activeDatabases } = useSelector((state) => state.database, shallowEqual);
+  const { selectedDatabase, activeDatabases, loggedInDatabases } = useSelector((state) => state.database, shallowEqual);
   const { selectedHostUid } = useSelector((state) => state.host, shallowEqual);
-  
+
   const {
     error,
     startAction,
@@ -212,7 +213,7 @@ export default function OptimizeDatabaseModal() {
     isSuccess,
     isError,
   } = useActionState();
-  const { runJob } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [selectedClassName, setSelectedClassName] = useState('');
   const [jobStatus, setJobStatus] = useState(null);
   const [dbuser, setDbuser] = useState('dba');
@@ -223,7 +224,11 @@ export default function OptimizeDatabaseModal() {
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
 
   const isActive = selectedDatabase && activeDatabases.includes(selectedDatabase);
-  
+  // optimizedb only needs credentials while online, and only to satisfy CMS's
+  // per-connection login cache — if a prior "Login Database" already
+  // populated that cache for this db, there's nothing new to authenticate.
+  const alreadyLoggedIn = isActive && loggedInDatabases.includes(dbKey(selectedHostUid, selectedDatabase));
+
   const fetchClasses = useCallback(async () => {
     if (!selectedHostUid || !selectedDatabase) return;
     setIsLoadingClasses(true);
@@ -246,12 +251,14 @@ export default function OptimizeDatabaseModal() {
   useEffect(() => {
     if (isOptimizeDatabaseModalOpen && selectedDatabase) {
       setSelectedClassName('');
-      setDbuser('dba');
+      // Blank when a prior login already covers this db — leaving it blank
+      // tells the backend to reuse that cache instead of logging in again.
+      setDbuser(alreadyLoggedIn ? '' : 'dba');
       setDbpasswd('');
       resetAction();
       fetchClasses();
     }
-  }, [isOptimizeDatabaseModalOpen, selectedDatabase, fetchClasses, resetAction]);
+  }, [isOptimizeDatabaseModalOpen, selectedDatabase, alreadyLoggedIn, fetchClasses, resetAction]);
 
   if (!isOptimizeDatabaseModalOpen) return null;
 
@@ -260,8 +267,9 @@ export default function OptimizeDatabaseModal() {
 
     // CMS authorizes optimizedb against a per-connection credential cache
     // populated by dbmtuserlogin — required whenever the database is
-    // online (see database-management.service.ts's loginIfCredentialsProvided).
-    if (isActive && !dbuser.trim()) {
+    // online (see database-management.service.ts's loginIfCredentialsProvided),
+    // unless a prior Login Database already populated that cache.
+    if (isActive && !alreadyLoggedIn && !dbuser.trim()) {
       endError(CM.dbUserRequiredWhileOnlineMsg);
       return;
     }
@@ -270,7 +278,7 @@ export default function OptimizeDatabaseModal() {
     try {
       const payload = {
         ...(selectedClassName && { classname: selectedClassName }),
-        ...(isActive && { dbuser: dbuser.trim(), dbpasswd }),
+        ...(isActive && dbuser.trim() && { dbuser: dbuser.trim(), dbpasswd }),
       };
 
       await runJob(
@@ -278,15 +286,22 @@ export default function OptimizeDatabaseModal() {
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
 
-      endSuccess();
+      if (!wasBackgrounded()) endSuccess();
     } catch (err) {
-      endError(typeof err === 'string' ? err : (err.message || 'Optimization was interrupted. Check the database connection and try again.'));
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : (err.message || 'Optimization was interrupted. Check the database connection and try again.'));
     }
   };
 
   const handleClose = () => {
     dispatch(closeOptimizeDatabaseModal());
     resetAction();
+  };
+
+  // Mirrors the footer button's disabled={isLoadingClasses} gate, which
+  // handleOptimize itself doesn't check.
+  const handleFormSubmit = () => {
+    if (isLoadingClasses) return;
+    handleOptimize();
   };
 
   /* ─── LOADING view ─── */
@@ -296,7 +311,7 @@ export default function OptimizeDatabaseModal() {
         <ModalStatusLoading
           title={CM.regeneratingStatistics}
           subtitle={getCmsJobLoadingSubtitle(selectedClassName || selectedDatabase, jobStatus, CM)}
-          onBackground={handleClose}
+          onBackground={() => { background(); handleClose(); }}
         />
       </Modal>
     );
@@ -323,6 +338,7 @@ export default function OptimizeDatabaseModal() {
         <ModalStatusError
           title={CM.optimizationFailed}
           error={error}
+          guidance={CM.optimizeDbGuidance}
           onRetry={handleOptimize}
           onCancel={handleClose}
           retryText={CM.retryOptimization}
@@ -342,6 +358,7 @@ export default function OptimizeDatabaseModal() {
       icon="auto_fix_high"
       maxWidth="480px"
       testId="optimize-database"
+      onSubmit={handleFormSubmit}
       footer={
         <div className="flex justify-end gap-3 w-full">
           <Button data-testid="optimize-database-cancel-btn" variant="secondary" onClick={handleClose}>

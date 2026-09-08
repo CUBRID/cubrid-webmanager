@@ -9,6 +9,7 @@ import DBBrokersCASSection from './dashboard/DBBrokersCASSection';
 import DBLockTransactionSection from './dashboard/DBLockTransactionSection';
 import DBJobAutomationSection from './dashboard/DBJobAutomationSection';
 import CASLogModal from './CASLogModal';
+import { isDatabaseInHa } from '../../host/haPeerUtils';
 
 import MonitoringSettingsPopover from '../../user/components/MonitoringSettingsPopover';
 import { Icon } from '../../../components/ds/foundation/Icon';
@@ -30,52 +31,11 @@ const Component = function DatabaseDashboard({ hostUid: propHostUid, dbname }) {
 
   const hostData = useSelector((state) => state.monitoring.hostsData[hostUid] || {});
   const haHeartbeat = hostData?.haHeartbeat;
-  const isDbInHa = React.useMemo(() => {
-    const raw = haHeartbeat?.hadbinfolist;
-    if (!raw) return false;
+  const isDbInHa = React.useMemo(
+    () => isDatabaseInHa(haHeartbeat, dbname),
+    [haHeartbeat, dbname]
+  );
 
-    const ensureArray = (val) => {
-      if (!val) return [];
-      return Array.isArray(val) ? val : [val];
-    };
-
-    let found = false;
-    ensureArray(raw).forEach((entry) => {
-      const servers = entry?.server;
-      if (!servers) return;
-
-      ensureArray(servers).forEach((server) => {
-        if (!server) return;
-
-        ensureArray(server.dbmode).forEach((row) => {
-          if (row?.dbname === dbname) found = true;
-        });
-
-        ensureArray(server.dbprocinfo).forEach((row) => {
-          if (row?.dbname === dbname) found = true;
-        });
-
-        ensureArray(server.applylogdb).forEach((block) => {
-          if (block?.element) {
-            ensureArray(block.element).forEach((el) => {
-              if (el?.dbname === dbname) found = true;
-            });
-          }
-        });
-
-        ensureArray(server.copylogdb).forEach((block) => {
-          if (block?.element) {
-            ensureArray(block.element).forEach((el) => {
-              if (el?.dbname === dbname) found = true;
-            });
-          }
-        });
-      });
-    });
-
-    return found;
-  }, [haHeartbeat, dbname]);
-  
   const { dashboardData, dashboardLoading } = useSelector((state) => state.databaseMonitoring, shallowEqual);
   const { preferences } = useSelector((state) => state.user, shallowEqual);
   const { refreshCounter, activeMainTab } = useSelector((state) => state.layout, shallowEqual);
@@ -121,10 +81,14 @@ const Component = function DatabaseDashboard({ hostUid: propHostUid, dbname }) {
   };
 
   const activeHost = hosts.find(h => h.uid === selectedHostUid);
-  const data = dashboardData[dbname] || { volumes: [], spaceInfo: [], locks: [], performance: {} };
-  const isLoading = dashboardLoading[dbname];
-  
-  const isTabActive = document.visibilityState === 'visible' && activeMainTab === `db:${dbname}`;
+  const dashboardKey = `${hostUid}:${dbname}`;
+  const data = dashboardData[dashboardKey] || { volumes: [], spaceInfo: [], locks: [], performance: {} };
+  const isLoading = dashboardLoading[dashboardKey];
+
+  // Tabs are always opened as `db:${hostUid}:${dbname}` (DatabaseTree.jsx) —
+  // comparing against a bare `db:${dbname}` here never matched, so every
+  // dashboard section's "became active, refetch" effect silently never fired.
+  const isTabActive = document.visibilityState === 'visible' && activeMainTab === `db:${hostUid}:${dbname}`;
 
 
   // Pass polling props to sections

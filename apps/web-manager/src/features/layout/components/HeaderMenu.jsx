@@ -34,7 +34,7 @@ export default function HeaderMenu() {
         />
         <MenuItem
           icon="edit"
-          label={CM.changeHost}
+          label={CM.editHost}
           disabled={!selectedHostUid}
           onClick={() => dispatch(openEditHostModal(selectedHostUid))}
         />

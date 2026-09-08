@@ -15,6 +15,7 @@ export default function EditHostModal() {
   const CM = useCM();
   const dispatch = useDispatch();
   const { isEditHostModalOpen, hostToEditUid, hosts, selectedHostUid, loading, error: apiError } = useSelector((state) => state.host, shallowEqual);
+  const isCredentialError = /password/i.test(apiError || '');
 
   const [formData, setFormData] = useState({
     id: '',
@@ -56,7 +57,12 @@ export default function EditHostModal() {
 
   const validate = () => {
     const errs = {};
-    if (!formData.alias.trim()) errs.alias = CM.hostNameRequired;
+    const trimmedAlias = formData.alias.trim();
+    if (!trimmedAlias) {
+      errs.alias = CM.hostNameRequired;
+    } else if (hosts.some((h) => h.uid !== hostToEditUid && h.alias?.trim() === trimmedAlias)) {
+      errs.alias = CM.hostNameDuplicate;
+    }
     if (!formData.address.trim()) errs.address = CM.addressRequired;
     if (!formData.port.trim()) errs.port = CM.portRequired;
     if (!formData.id.trim()) errs.id = CM.usernameRequired;
@@ -174,8 +180,10 @@ export default function EditHostModal() {
     >
       <div className="space-y-4 p-1">
 
-        {/* API Error Banner */}
-        {apiError && (
+        {/* API Error Banner — credential failures show inline under the
+            password field instead (see Section 3) for consistency with
+            client-side validation errors. */}
+        {apiError && !isCredentialError && (
           <div className="flex items-start gap-3 px-4 py-3 bg-rose-500/5 border border-rose-500/15 rounded-xl">
             <Icon name="error_outline" size="sm" weight={300} className="text-rose-500 shrink-0 mt-0.5" />
             <p className="text-[11.5px] text-rose-500 font-medium flex-1 leading-relaxed">{apiError}</p>
@@ -257,13 +265,13 @@ export default function EditHostModal() {
               required
             />
             <Input
-              label={CM.newPassword}
+              label={CM.password}
               labelExtra="(optional)"
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              error={errors.password}
+              error={errors.password || (isCredentialError ? apiError : undefined)}
               placeholder={CM.leaveBlankToKeep}
               icon="key"
               disabled={loading}

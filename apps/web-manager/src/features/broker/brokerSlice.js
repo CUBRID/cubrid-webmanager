@@ -1,7 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { brokerApi } from './brokerApi';
+import { isAmbiguousFailure } from '../../api/isAmbiguousFailure';
+import { createRateTracker } from './rateTracker';
 
 const generateId = () => Math.random().toString(36).substring(2, 6);
+
+// Module-level so the previous-sample baseline survives across polls and
+// across every host/broker tab, keyed by hostUid+brokerName below.
+const brokerRateTracker = createRateTracker();
 
 export const fetchBrokerList = createAsyncThunk(
   'broker/fetchBrokerList',
@@ -42,14 +48,22 @@ export const fetchBrokerList = createAsyncThunk(
 
       const dataSource = responses.map((r) => {
         if (!r.success) return null;
-        const result = r.statusRes?.asinfo?.[0];
-        if (!result) return r.b;
+        const asList = r.statusRes?.asinfo;
+        if (!asList?.length) return r.b;
+
+        // as_num_query/as_num_tran are per-AS lifetime totals — sum across
+        // every AS process for this broker, then convert to a rate below.
+        const totalQuery = asList.reduce((sum, as) => sum + (Number(as.as_num_query) || 0), 0);
+        const totalTran = asList.reduce((sum, as) => sum + (Number(as.as_num_tran) || 0), 0);
+        const trackerKey = `${hostUid}:${r.b.name}`;
+        const qps = brokerRateTracker(`${trackerKey}:qps`, totalQuery);
+        const tps = brokerRateTracker(`${trackerKey}:tps`, totalTran);
 
         return {
           ...r.b,
           key: r.b.name,
-          qps: result.as_num_query || '0',
-          tps: result.as_num_tran || '0',
+          qps: qps === null ? null : qps.toFixed(1),
+          tps: tps === null ? null : tps.toFixed(1),
         };
       }).filter(Boolean);
 
@@ -80,6 +94,7 @@ export const startBroker = createAsyncThunk(
       dispatch(fetchBrokerList(hostUid));
       return { brokerName, success: true };
     } catch (err) {
+      if (isAmbiguousFailure(err)) dispatch(fetchBrokerList(hostUid));
       return rejectWithValue(err.response?.data?.message || 'Failed to start broker');
     }
   }
@@ -93,6 +108,7 @@ export const stopBroker = createAsyncThunk(
       dispatch(fetchBrokerList(hostUid));
       return { brokerName, success: true };
     } catch (err) {
+      if (isAmbiguousFailure(err)) dispatch(fetchBrokerList(hostUid));
       return rejectWithValue(err.response?.data?.message || 'Failed to stop broker');
     }
   }
@@ -106,6 +122,7 @@ export const startAllBrokers = createAsyncThunk(
       dispatch(fetchBrokerList(hostUid));
       return { success: true };
     } catch (err) {
+      if (isAmbiguousFailure(err)) dispatch(fetchBrokerList(hostUid));
       return rejectWithValue(err.response?.data?.message || 'Failed to start all brokers');
     }
   }
@@ -119,6 +136,7 @@ export const stopAllBrokers = createAsyncThunk(
       dispatch(fetchBrokerList(hostUid));
       return { success: true };
     } catch (err) {
+      if (isAmbiguousFailure(err)) dispatch(fetchBrokerList(hostUid));
       return rejectWithValue(err.response?.data?.message || 'Failed to stop all brokers');
     }
   }
@@ -205,6 +223,7 @@ export const updateBrokerConfig = createAsyncThunk(
       dispatch(fetchBrokerConfig({ hostUid }));
       return { success: true };
     } catch (err) {
+      if (isAmbiguousFailure(err)) dispatch(fetchBrokerConfig({ hostUid }));
       return rejectWithValue(err.response?.data?.message || 'Failed to update broker configuration');
     }
   }

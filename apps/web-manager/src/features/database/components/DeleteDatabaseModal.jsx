@@ -157,9 +157,10 @@ export default function DeleteDatabaseModal() {
   if (isError) {
     return (
       <Modal isOpen title={CM.executionError} icon="delete_forever" iconVariant="danger" onClose={resetAction} maxWidth="440px" testId="delete-database">
-        <ModalStatusError 
+        <ModalStatusError
           title={CM.failure}
           error={error}
+          guidance={CM.deleteDbGuidance}
           onRetry={step === 2 ? handleConfirm : undefined}
           onCancel={resetAction}
           retryText={CM.retry}

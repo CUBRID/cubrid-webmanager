@@ -88,7 +88,13 @@ export default function DatabaseVolumes({ hostUid, activeDatabases = [] }) {
   const [loading, setLoading] = useState(false);
 
   const fetchVolumes = useCallback(async () => {
-    if (!hostUid || !authorizedHosts.includes(hostUid) || activeDatabases.length === 0) return;
+    if (!hostUid || !authorizedHosts.includes(hostUid) || activeDatabases.length === 0) {
+      // Stopping the last active database shrinks activeDatabases to empty —
+      // without this, the last fetch's result just lingers in local state
+      // showing a now-stopped database's stale volume info as if current.
+      setVolumes([]);
+      return;
+    }
     setLoading(true);
     try {
       const result = await dispatch(fetchDatabaseVolumes({ hostUid, activeDatabases })).unwrap();
@@ -147,7 +153,13 @@ export default function DatabaseVolumes({ hostUid, activeDatabases = [] }) {
       bodyClassName="p-0"
       collapsible
     >
-      <Table columns={columns} data={volumeData} loading={loading} className="text-[12px]" />
+      <Table
+        columns={columns}
+        data={volumeData}
+        loading={loading}
+        className="text-[12px]"
+        emptyMessage={activeDatabases.length === 0 ? CM.storageVolumesRequireOnlineDbMsg : undefined}
+      />
     </Card>
   );
 }

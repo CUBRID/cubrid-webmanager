@@ -19,7 +19,6 @@ export const TimePicker = ({
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState({});
   const buttonRef = useRef(null);
-  const containerRef = useRef(null);
 
   const openDropdown = useCallback(() => {
     if (!buttonRef.current) return;
@@ -38,7 +37,7 @@ export const TimePicker = ({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
-        containerRef.current && !containerRef.current.contains(event.target) &&
+        buttonRef.current && !buttonRef.current.contains(event.target) &&
         !document.getElementById('timepicker-portal-root')?.contains(event.target)
       ) {
         setIsOpen(false);
@@ -114,24 +113,55 @@ export const TimePicker = ({
     document.body
   ) : null;
 
+  // Typing directly needs its own draft state — committing on every
+  // keystroke would reject "1", "14", "14:" etc. as invalid HH:MM and fight
+  // the user, so only validate/commit once they're done (blur or Enter).
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+
+  const commitDraft = () => {
+    const match = draft.match(/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/);
+    if (match) {
+      const normalized = `${match[1].padStart(2, '0')}:${match[2]}`;
+      if (normalized !== value && onChange) {
+        onChange({ target: { value: normalized, name: props.name } });
+      }
+      setDraft(normalized);
+    } else {
+      setDraft(value); // invalid — revert to last known-good value
+    }
+  };
+
   return (
     <FormField label={label} description={description} error={error} required={required} className={className}>
-      <div className="relative group" ref={containerRef}>
+      <div
+        ref={buttonRef}
+        className={`relative w-full h-10 px-4 flex items-center justify-between bg-slate-50 dark:bg-white/3 border rounded-xl transition-all ${
+          isOpen ? 'border-amber-500/60 ring-4 ring-amber-500/10' : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
+        } ${disabled ? 'opacity-60' : ''}`}
+      >
+        <span className="flex items-center gap-2.5 min-w-0">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0 ${isOpen ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+            <Icon name={icon} size="14px" weight={300} />
+          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="HH:MM"
+            value={draft}
+            disabled={disabled}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitDraft}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+            className="font-mono font-bold text-[13px] tracking-tight text-slate-900 dark:text-slate-100 bg-transparent outline-none w-[52px] disabled:cursor-not-allowed"
+          />
+        </span>
         <button
-          ref={buttonRef}
           type="button"
           disabled={disabled}
           onClick={() => !disabled && (isOpen ? setIsOpen(false) : openDropdown())}
-          className={`relative w-full h-10 px-4 flex items-center justify-between bg-slate-50 dark:bg-white/3 border rounded-xl transition-all font-bold text-[13px] cursor-pointer ${
-            isOpen ? 'border-amber-500/60 ring-4 ring-amber-500/10' : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
-          } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`flex items-center justify-center shrink-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <span className="flex items-center gap-2.5">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isOpen ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-              <Icon name={icon} size="14px" weight={300} />
-            </div>
-            <span className="font-mono text-[13px] tracking-tight text-slate-900 dark:text-slate-100">{value}</span>
-          </span>
           <Icon name="expand_more" size="sm" className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180 text-amber-500' : ''}`} />
         </button>
         {dropdownEl}

@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { hostApi } from './hostApi';
 import { databaseApi } from '../database/databaseApi';
-import { brokerApi } from '../broker/brokerApi';
 import { fetchDatabaseStartInfo } from '../database/databaseSlice';
 import { fetchBrokerList } from '../broker/brokerSlice';
 import { flattenHostsFromGroups, findGroupIdForHost } from './hostGroupUtils';
@@ -202,79 +201,26 @@ export const setHostPassword = createAsyncThunk(
   }
 );
 
-const getServiceOperationError = (err) => (
-  err?.response?.data?.message
-  || err?.response?.data?.error
-  || err?.message
-  || String(err || 'Unknown error')
-);
-
-const collectServiceFailures = async (items, operation) => {
-  const results = await Promise.allSettled(items.map(operation));
-  return results
-    .map((result, index) => (
-      result.status === 'rejected'
-        ? { name: items[index].name, error: getServiceOperationError(result.reason) }
-        : null
-    ))
-    .filter(Boolean);
-};
-
 const formatServiceFailures = (actionLabel, failures) => (
   `Failed to ${actionLabel} for: ${failures.map(({ name, error }) => `${name} (${error})`).join(', ')}`
 );
 
-// Async thunk to start CUBRID service (Brokers + Auto-start Databases)
+// Async thunk to start CUBRID service (Brokers + Auto-start Databases,
+// including a bulk ha_start for every HA-configured database) — the backend
+// does brokers → cubridconf-driven database start in one call.
 export const startService = createAsyncThunk(
   'host/startService',
   async (hostUid, { dispatch, rejectWithValue }) => {
     try {
-      const failures = [];
+      dispatch(hostSlice.actions.setServiceProgressMessage('Starting service...'));
+      const { failed } = await databaseApi.startWholeService(hostUid);
 
-      // 1. Start all Brokers
-      dispatch(hostSlice.actions.setServiceProgressMessage('Starting brokers...'));
-      try {
-        await brokerApi.startAllBrokers(hostUid);
-      } catch (err) {
-        failures.push({ name: 'brokers', error: getServiceOperationError(err) });
-      }
-
-      // 2. Fetch cubrid.conf to find auto-start databases
-      dispatch(hostSlice.actions.setServiceProgressMessage('Checking auto-start configuration...'));
-      const configRes = await hostApi.getHostConfig(hostUid, 'cubridconf');
-      const lines = configRes?.conflist?.[0]?.confdata || [];
-      
-      let serviceEnabled = false;
-      let autoStartServers = [];
-      
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('#') || !trimmed) continue;
-        if (trimmed.startsWith('service=')) {
-          const val = trimmed.split('=')[1] || '';
-          if (val.split(',').map(s => s.trim().toLowerCase()).includes('server')) serviceEnabled = true;
-        }
-        if (trimmed.startsWith('server=')) {
-          const val = trimmed.split('=')[1] || '';
-          autoStartServers = val.split(',').map(s => s.trim());
-        }
-      }
-
-      // 3. Start auto-start databases if service is enabled
-      if (serviceEnabled && autoStartServers.length > 0) {
-        dispatch(hostSlice.actions.setServiceProgressMessage(`Starting databases (${autoStartServers.join(', ')})...`));
-        failures.push(...await collectServiceFailures(
-          autoStartServers.map(dbname => ({ name: dbname })),
-          db => databaseApi.startDatabase(hostUid, db.name)
-        ));
-      }
-
-      // Refresh everything
       dispatch(hostSlice.actions.setServiceProgressMessage('Refreshing status...'));
       dispatch(fetchDatabaseStartInfo(hostUid));
       dispatch(fetchBrokerList(hostUid));
-      if (failures.length > 0) {
-        return rejectWithValue(formatServiceFailures('start service', failures));
+      dispatch(refreshHaInfo(hostUid));
+      if (failed.length > 0) {
+        return rejectWithValue(formatServiceFailures('start service', failed));
       }
       return true;
     } catch (err) {
@@ -283,38 +229,22 @@ export const startService = createAsyncThunk(
   }
 );
 
-// Async thunk to stop CUBRID service (All Brokers + All Databases)
+// Async thunk to stop CUBRID service (All Databases, including a bulk
+// ha_stop for every HA-configured database, then All Brokers) — the backend
+// does database stop → brokers in one call.
 export const stopService = createAsyncThunk(
   'host/stopService',
   async (hostUid, { dispatch, rejectWithValue }) => {
     try {
-      const failures = [];
+      dispatch(hostSlice.actions.setServiceProgressMessage('Stopping service...'));
+      const { failed } = await databaseApi.stopWholeService(hostUid);
 
-      // 1. Stop all Brokers
-      dispatch(hostSlice.actions.setServiceProgressMessage('Stopping brokers...'));
-      try {
-        await brokerApi.stopAllBrokers(hostUid);
-      } catch (err) {
-        failures.push({ name: 'brokers', error: getServiceOperationError(err) });
-      }
-
-      // 2. Stop all Databases
-      dispatch(hostSlice.actions.setServiceProgressMessage('Stopping databases...'));
-      const databaseResponse = await databaseApi.getStartInfo(hostUid);
-      const dbList = databaseResponse?.dblist?.dbs || [];
-      if (dbList.length > 0) {
-        failures.push(...await collectServiceFailures(
-          dbList.map(db => ({ name: db.dbname })),
-          db => databaseApi.stopDatabase(hostUid, db.name)
-        ));
-      }
-
-      // Refresh everything
       dispatch(hostSlice.actions.setServiceProgressMessage('Refreshing status...'));
       dispatch(fetchDatabaseStartInfo(hostUid));
       dispatch(fetchBrokerList(hostUid));
-      if (failures.length > 0) {
-        return rejectWithValue(formatServiceFailures('stop service', failures));
+      dispatch(refreshHaInfo(hostUid));
+      if (failed.length > 0) {
+        return rejectWithValue(formatServiceFailures('stop service', failed));
       }
       return true;
     } catch (err) {
@@ -341,6 +271,34 @@ export const loginToHost = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.response?.data?.error || `Failed to login to host ${hostUid}`);
     }
+  }
+);
+
+// Async thunk to re-derive a host's HA badge (role/peers) without a full
+// relogin — used after anything that can change HA role server-side
+// (Service Start/Stop's ha_start/ha_stop) and by the manual server-list
+// refresh, since haInfo is otherwise only ever populated at login time.
+export const refreshHaInfo = createAsyncThunk(
+  'host/refreshHaInfo',
+  async (hostUid, { rejectWithValue }) => {
+    try {
+      const response = await hostApi.getHaInfo(hostUid);
+      return { hostUid, ...response };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || `Failed to refresh HA info for ${hostUid}`);
+    }
+  }
+);
+
+// Async thunk for a manual "refresh" of the whole server list: re-fetches
+// the host/group tree, then re-derives HA info for every logged-in host.
+export const refreshServerList = createAsyncThunk(
+  'host/refreshServerList',
+  async (_, { dispatch, getState }) => {
+    await dispatch(fetchHosts());
+    const { authorizedHosts } = getState().host;
+    await Promise.all(authorizedHosts.map((hostUid) => dispatch(refreshHaInfo(hostUid))));
+    return true;
   }
 );
 
@@ -744,6 +702,13 @@ const hostSlice = createSlice({
           state.error = action.payload;
         }
       })
+      // Silent background refresh — no loading/error state, so a failure
+      // (e.g. a host that went offline) doesn't surface an error banner.
+      .addCase(refreshHaInfo.fulfilled, (state, action) => {
+        const { hostUid, ...haInfo } = action.payload;
+        state.haInfo[hostUid] = haInfo;
+        syncHaInfoStorage(state);
+      })
       .addCase(deleteHost.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -1128,9 +1093,10 @@ export const loginHostsBatch = createAsyncThunk(
         await dispatch(loginToHost(uid)).unwrap();
         succeededUids.push(uid);
         successCount += 1;
-      } catch {
+      } catch (err) {
         const host = getState().host.hosts.find((h) => h.uid === uid);
-        failed.push(host?.alias || host?.id || uid);
+        const reason = typeof err === 'string' ? err : (err?.message || String(err));
+        failed.push({ name: host?.alias || host?.id || uid, reason });
       }
     }
 

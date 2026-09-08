@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closePlanDumpModal, fetchDatabasePlanDump, resetPlanDumpState } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import LoadingOverlay from '../../../components/common/LoadingOverlay';
 import ErrorOverlay from '../../../components/common/ErrorOverlay';
 import { useCM } from '../../../constants/useCM';
@@ -24,6 +25,7 @@ export default function DatabasePlanDumpModal() {
 
   const [step, setStep] = useState('setup');
   const [planDrop, setPlanDrop] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isPlanDumpModalOpen) {
@@ -51,7 +53,7 @@ export default function DatabasePlanDumpModal() {
     dispatch(closePlanDumpModal());
   };
 
-  const results = planDumpData[selectedDatabase] || {};
+  const results = planDumpData[dbKey(selectedHostUid, selectedDatabase)] || {};
   let lines = [];
   if (results.log && Array.isArray(results.log) && results.log.length > 0) {
     lines = results.log[0].line || [];
@@ -86,6 +88,13 @@ export default function DatabasePlanDumpModal() {
 
 
   const visibleLines = lines.filter(l => l && l.trim());
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(visibleLines.join('\n')).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
 
   return (
     <Modal
@@ -206,14 +215,14 @@ export default function DatabasePlanDumpModal() {
 
         ) : (
           /* Results View */
-          <div className="flex flex-col -m-6 h-[560px]">
+          <div className="flex flex-col -m-5 h-[560px]">
             {/* Stats Bar */}
             {Object.keys(stats).length > 0 && (
               <div className="grid grid-cols-4 border-b border-slate-100 dark:border-white/5 shrink-0">
                 {statCards.map((card, i) => (
                   <div
                     key={i}
-                    className={`px-4 py-3 ${i < statCards.length - 1 ? 'border-r border-slate-100 dark:border-white/5' : ''}`}
+                    className={`px-6 py-3 ${i < statCards.length - 1 ? 'border-r border-slate-100 dark:border-white/5' : ''}`}
                   >
                     <Typography variant="label" className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
                       {card.label}
@@ -227,16 +236,28 @@ export default function DatabasePlanDumpModal() {
             )}
 
             {/* Header row */}
-            <div className="px-4 py-2 flex items-center justify-between bg-slate-50/80 dark:bg-white/2 border-b border-slate-100 dark:border-white/5 shrink-0">
+            <div className="px-6 py-2 flex items-center justify-between bg-slate-50/80 dark:bg-white/2 border-b border-slate-100 dark:border-white/5 shrink-0">
               <div className="flex items-center gap-2">
                 <Icon name="list_alt" size="sm" weight={300} className="text-slate-400" />
                 <Typography variant="label" className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   {CM.queryPlanEntriesLabel}
                 </Typography>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${visibleLines.length > 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-400 border-slate-200 dark:border-white/10'}`}>
-                {visibleLines.length > 0 ? CM.linesCountLabel(visibleLines.length) : CM.emptyLabel}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${visibleLines.length > 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-400 border-slate-200 dark:border-white/10'}`}>
+                  {visibleLines.length > 0 ? CM.linesCountLabel(visibleLines.length) : CM.emptyLabel}
+                </span>
+                {visibleLines.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    title={CM.copyToClipboard}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-all"
+                  >
+                    <Icon name={copied ? 'check' : 'content_copy'} size="14px" weight={300} className={copied ? 'text-emerald-500' : ''} />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Output */}
@@ -250,13 +271,13 @@ export default function DatabasePlanDumpModal() {
                   return (
                     <div
                       key={idx}
-                      className={`px-4 py-1.5 flex gap-3 border-b border-slate-50 dark:border-white/3 last:border-0
+                      className={`px-6 py-1.5 flex gap-3 border-b border-slate-50 dark:border-white/3 last:border-0
                         ${isHeader ? 'bg-amber-500/3 dark:bg-amber-500/5' : 'hover:bg-slate-50/80 dark:hover:bg-white/2'}`}
                     >
                       <span className="shrink-0 w-7 text-[9px] font-mono text-slate-300 dark:text-slate-700 mt-0.5 tabular-nums">
                         {(idx + 1).toString().padStart(3, '0')}
                       </span>
-                      <span className={`text-[11px] font-mono leading-snug break-all
+                      <span className={`text-[12px] font-mono leading-snug break-all
                         ${isHeader ? 'text-amber-600 dark:text-amber-400 font-bold' :
                           isPlanLine ? 'text-sky-600 dark:text-sky-400 pl-2 border-l border-sky-500/20' :
                             isStatLine ? 'text-slate-600 dark:text-slate-300' :

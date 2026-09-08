@@ -237,7 +237,7 @@ export default function CMSUserManagementModal() {
                   <div className="w-8 h-8 rounded-lg border border-dashed border-slate-300 dark:border-white/10 flex items-center justify-center group-hover/add:border-amber-500/50 transition-all">
                     <Icon name="add" size="14px" weight={300} />
                   </div>
-                  <span className="text-[12px] font-bold">{CM.addManagementUserBtn}</span>
+                  <span className="text-[13px] font-bold">{CM.addManagementUserBtn}</span>
                 </button>
               </div>
             )}

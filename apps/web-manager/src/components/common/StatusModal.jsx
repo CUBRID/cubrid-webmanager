@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeStatusModal } from '../../features/layout/layoutSlice';
 import { Icon } from '../ds/foundation/Icon';
@@ -38,8 +38,10 @@ export default function StatusModal() {
   const CM = useCM();
   const dispatch = useDispatch();
   const { statusModal } = useSelector((state) => state.layout, shallowEqual);
-  const { isOpen, type, title, message } = statusModal;
+  const { isOpen, type, title, message, guidance, detail } = statusModal;
   const btnRef = useRef(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const guidanceItems = Array.isArray(guidance) ? guidance : (guidance ? [guidance] : []);
 
   const t = THEME_STYLES[type] || THEME_STYLES.info;
   const tLabel = { success: CM.jobStatusSucceeded, error: CM.jobStatusFailed, info: CM.statusNotice }[type] ?? CM.statusNotice;
@@ -49,6 +51,7 @@ export default function StatusModal() {
     if (isOpen && btnRef.current) {
       setTimeout(() => btnRef.current?.focus(), 50);
     }
+    if (isOpen) setShowDetail(false);
   }, [isOpen]);
 
   // Close on Escape
@@ -115,6 +118,38 @@ export default function StatusModal() {
             <p className="text-[11.5px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-[240px]">
               {message}
             </p>
+          )}
+
+          {guidanceItems.length > 0 && (
+            <div className="mt-4 w-full bg-amber-500/5 border border-amber-500/15 rounded-xl px-4 py-3 text-left">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-amber-500 mb-1.5">{CM.thingsToCheck}</p>
+              <ul className="space-y-1">
+                {guidanceItems.map((item, idx) => (
+                  <li key={idx} className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed flex gap-1.5">
+                    <span className="text-amber-500 shrink-0">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {detail && (
+            <div className="mt-3 w-full text-left">
+              <button
+                type="button"
+                onClick={() => setShowDetail((v) => !v)}
+                className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                <Icon name={showDetail ? 'expand_less' : 'expand_more'} size="12px" weight={300} />
+                {showDetail ? CM.hideDetails : CM.showDetails}
+              </button>
+              {showDetail && (
+                <div className="mt-2 bg-rose-500/5 border border-rose-500/15 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <p className="text-rose-600/90 dark:text-rose-400/90 font-mono text-[10.5px] leading-relaxed break-words">{detail}</p>
+                </div>
+              )}
+            </div>
           )}
 
           {/* CTA button */}

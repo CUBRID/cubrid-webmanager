@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal } from '../../components/ds/layout/Modal';
 import { ModalStatusSuccess, ModalStatusError } from '../../components/ds/feedback/ActionStatus';
 import { useCM } from '../../constants/useCM';
-import { getCmsJobTypeLabel } from './cmsJobLabels';
+import { getCmsJobTypeLabel, getCmsJobGuidance } from './cmsJobLabels';
 
 export function JobResultModal({ result, onClose }) {
   const CM = useCM();
@@ -46,6 +46,7 @@ export function JobResultModal({ result, onClose }) {
       <ModalStatusError
         title={CM.jobNotifyFailed(op, db)}
         error={errMsg}
+        guidance={getCmsJobGuidance(result.type, CM)}
         onCancel={onClose}
         cancelText={CM.dismiss}
       />

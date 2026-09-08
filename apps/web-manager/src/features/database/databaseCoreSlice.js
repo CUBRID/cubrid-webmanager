@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { databaseApi } from './databaseApi';
+import { isAmbiguousFailure } from '../../api/isAmbiguousFailure';
+import { dbKey } from './dbKey';
 
 export const fetchDatabaseStartInfo = createAsyncThunk(
   'database/fetchDatabaseStartInfo',
@@ -16,11 +18,14 @@ export const fetchDatabaseStartInfo = createAsyncThunk(
 
 export const startDatabase = createAsyncThunk(
   'database/startDatabase',
-  async ({ hostUid, dbname }, { rejectWithValue }) => {
+  async ({ hostUid, dbname }, { rejectWithValue, dispatch }) => {
     try {
       const response = await databaseApi.startDatabase(hostUid, dbname);
       return response;
     } catch (err) {
+      if (isAmbiguousFailure(err)) {
+        dispatch(fetchDatabaseStartInfo(hostUid));
+      }
       return rejectWithValue(err.response?.data?.message || err.response?.data?.error || `Failed to start database ${dbname}`);
     }
   }
@@ -28,7 +33,7 @@ export const startDatabase = createAsyncThunk(
 
 export const stopDatabase = createAsyncThunk(
   'database/stopDatabase',
-  async ({ hostUid, dbname }, { rejectWithValue }) => {
+  async ({ hostUid, dbname }, { rejectWithValue, dispatch }) => {
     try {
       const response = await databaseApi.stopDatabase(hostUid, dbname);
       return response;
@@ -46,6 +51,9 @@ export const stopDatabase = createAsyncThunk(
         }
       } catch (_) {
         // ignore start-info failure, fall through to rejectWithValue
+      }
+      if (isAmbiguousFailure(err)) {
+        dispatch(fetchDatabaseStartInfo(hostUid));
       }
       return rejectWithValue(err.response?.data?.message || err.response?.data?.error || `Failed to stop database ${dbname}`);
     }
@@ -66,6 +74,18 @@ export const loginDatabase = createAsyncThunk(
   }
 );
 
+export const logoutDatabase = createAsyncThunk(
+  'database/logoutDatabase',
+  async ({ hostUid, dbname }, { rejectWithValue }) => {
+    try {
+      await databaseApi.logoutDatabase(hostUid, dbname);
+      return { dbname };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.response?.data?.error || `Failed to log out of database ${dbname}`);
+    }
+  }
+);
+
 export const registerDatabase = createAsyncThunk(
   'database/registerDatabase',
   async ({ hostUid, dbname, payload }, { rejectWithValue }) => {
@@ -78,24 +98,48 @@ export const registerDatabase = createAsyncThunk(
   }
 );
 
+export const deleteDatabaseProfile = createAsyncThunk(
+  'database/deleteDatabaseProfile',
+  async ({ hostUid, dbname }, { rejectWithValue }) => {
+    try {
+      const response = await databaseApi.deleteDatabaseProfile(hostUid, dbname);
+      return { dbname, response };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.response?.data?.error || `Failed to delete saved credentials for ${dbname}`);
+    }
+  }
+);
+
 // Helper to parse the shared response format
 const parseDbResponse = (state, payload) => {
   if (!payload) return;
   const dbsFound = payload.dblist?.dbs;
   const activeFound = payload.activelist?.active;
 
-  if (dbsFound !== undefined) {
-    const rawList = Array.isArray(dbsFound) ? dbsFound : dbsFound ? [dbsFound] : [];
-    if (JSON.stringify(state.databases) !== JSON.stringify(rawList)) {
-      state.databases = rawList;
+  let newActive;
+  if (payload.activelist !== undefined) {
+    const rawActive = Array.isArray(activeFound) ? activeFound : activeFound ? [activeFound] : [];
+    newActive = rawActive.map(d => (typeof d === 'string' ? d : d?.dbname)).filter(Boolean);
+    if (JSON.stringify(state.activeDatabases) !== JSON.stringify(newActive)) {
+      state.activeDatabases = newActive;
     }
   }
 
-  if (payload.activelist !== undefined) {
-    const rawActive = Array.isArray(activeFound) ? activeFound : activeFound ? [activeFound] : [];
-    const newActive = rawActive.map(d => (typeof d === 'string' ? d : d?.dbname)).filter(Boolean);
-    if (JSON.stringify(state.activeDatabases) !== JSON.stringify(newActive)) {
-      state.activeDatabases = newActive;
+  if (dbsFound !== undefined) {
+    const rawList = Array.isArray(dbsFound) ? dbsFound : dbsFound ? [dbsFound] : [];
+    // CMS's dblist can omit a database that startinfo's own activelist still
+    // reports as active — seen consistently on HA replica nodes, where the
+    // database is genuinely running/replicating there but was never locally
+    // "registered" the way dblist expects. Without this, such a database is
+    // simply missing from the tree entirely instead of just showing as on.
+    const knownNames = new Set(rawList.map((db) => db.dbname));
+    const activeNames = newActive ?? state.activeDatabases ?? [];
+    const missingActiveNames = activeNames.filter((name) => !knownNames.has(name));
+    const mergedList = missingActiveNames.length > 0
+      ? [...rawList, ...missingActiveNames.map((dbname) => ({ dbname, isProfileExists: false }))]
+      : rawList;
+    if (JSON.stringify(state.databases) !== JSON.stringify(mergedList)) {
+      state.databases = mergedList;
     }
   }
 
@@ -106,11 +150,23 @@ const parseDbResponse = (state, payload) => {
       state.selectedDatabaseSubItem = null;
     }
   }
+
+  // Static ha_db_list membership from cubrid_ha.conf — deliberately separate
+  // from any live-heartbeat-based HA signal, which can read "not HA" while
+  // the pair is genuinely down or mid-recovery (see haDbNames comment on
+  // StartInfoClientResponse).
+  if (payload.haDbNames !== undefined) {
+    const newHaDbNames = Array.isArray(payload.haDbNames) ? payload.haDbNames : [];
+    if (JSON.stringify(state.haDbNames) !== JSON.stringify(newHaDbNames)) {
+      state.haDbNames = newHaDbNames;
+    }
+  }
 };
 
 const initialState = {
   databases: [],
   activeDatabases: [],
+  haDbNames: [],
   selectedDatabase: null,
   selectedDatabaseSubItem: null,
   loggedInDatabases: [],
@@ -139,6 +195,7 @@ const databaseCoreSlice = createSlice({
     resetDatabaseState: (state) => {
       state.databases = [];
       state.activeDatabases = [];
+      state.haDbNames = [];
       state.selectedDatabase = null;
       state.selectedDatabaseSubItem = null;
       state.loggedInDatabases = [];
@@ -186,23 +243,40 @@ const databaseCoreSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(loginDatabase.pending, (state, action) => {
-        const { dbname, isBackground } = action.meta.arg || {};
+        const { hostUid, dbname, isBackground } = action.meta.arg || {};
         if (!isBackground) state.actionLoading = true;
-        if (dbname) state.loggingInDatabases[dbname] = true;
+        if (dbname) state.loggingInDatabases[dbKey(hostUid, dbname)] = true;
         state.error = null;
       })
       .addCase(loginDatabase.fulfilled, (state, action) => {
+        const { hostUid } = action.meta.arg || {};
         const { dbname } = action.payload;
         state.actionLoading = false;
-        if (dbname) state.loggingInDatabases[dbname] = false;
-        if (!state.loggedInDatabases.includes(dbname)) {
-          state.loggedInDatabases.push(dbname);
+        if (dbname) state.loggingInDatabases[dbKey(hostUid, dbname)] = false;
+        const key = dbKey(hostUid, dbname);
+        if (!state.loggedInDatabases.includes(key)) {
+          state.loggedInDatabases.push(key);
         }
       })
       .addCase(loginDatabase.rejected, (state, action) => {
-        const { dbname } = action.meta.arg || {};
+        const { hostUid, dbname } = action.meta.arg || {};
         state.actionLoading = false;
-        if (dbname) state.loggingInDatabases[dbname] = false;
+        if (dbname) state.loggingInDatabases[dbKey(hostUid, dbname)] = false;
+        state.error = action.payload;
+      })
+      .addCase(logoutDatabase.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(logoutDatabase.fulfilled, (state, action) => {
+        const { hostUid } = action.meta.arg || {};
+        const { dbname } = action.payload;
+        state.actionLoading = false;
+        const key = dbKey(hostUid, dbname);
+        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== key);
+      })
+      .addCase(logoutDatabase.rejected, (state, action) => {
+        state.actionLoading = false;
         state.error = action.payload;
       })
       .addCase(registerDatabase.pending, (state) => {
@@ -216,6 +290,26 @@ const databaseCoreSlice = createSlice({
         }
       })
       .addCase(registerDatabase.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteDatabaseProfile.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteDatabaseProfile.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        // Forgetting the profile also drops the server's dbmt-login cache
+        // for it (deleteDbProfile clears both), so this db is no longer
+        // logged in on the client either.
+        const { hostUid } = action.meta.arg || {};
+        const key = dbKey(hostUid, action.payload.dbname);
+        state.loggedInDatabases = state.loggedInDatabases.filter((d) => d !== key);
+        if (action.payload.response) {
+          parseDbResponse(state, action.payload.response);
+        }
+      })
+      .addCase(deleteDatabaseProfile.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload;
       });

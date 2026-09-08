@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { brokerApi } from '../../broker/brokerApi';
 import { showStatusModal, setTabDirty } from '../../layout/layoutSlice';
+import { isAmbiguousFailure } from '../../../api/isAmbiguousFailure';
 import { Typography } from '../../../components/ds/foundation/Typography';
 import { Icon } from '../../../components/ds/foundation/Icon';
 import { Spinner } from '../../../components/ds/foundation/Spinner';
@@ -44,7 +45,9 @@ export default function BrokerConfigEditor({ hostUid }) {
       dispatch(showStatusModal({
         type: 'error',
         title: CM.fetchFailed,
-        message: CM.brokerConfigRetrieveError
+        message: CM.brokerConfigRetrieveError,
+        guidance: CM.brokerOperationGuidance,
+        detail: err?.response?.data?.note || err?.message,
       }));
     } finally {
       setLoading(false);
@@ -85,10 +88,13 @@ export default function BrokerConfigEditor({ hostUid }) {
         message: CM.brokerConfigSaveSuccess
       }));
     } catch (err) {
+      if (isAmbiguousFailure(err)) fetchConfig();
       dispatch(showStatusModal({
         type: 'error',
         title: CM.saveFailed,
-        message: CM.brokerConfigSaveError
+        message: CM.brokerConfigSaveError,
+        guidance: CM.brokerOperationGuidance,
+        detail: err?.response?.data?.note || err?.message,
       }));
     } finally {
       setSaving(false);

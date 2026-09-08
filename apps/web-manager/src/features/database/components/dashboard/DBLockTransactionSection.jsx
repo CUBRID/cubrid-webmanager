@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchDashboardLocks,
   setSelectedDatabase,
@@ -37,6 +37,14 @@ export default function DBLockTransactionSection({ locks, pollingProps }) {
   const refresh = () => {
     if (hostUid && dbname) dispatch(fetchDashboardLocks({ hostUid, dbname }));
   };
+
+  const transactionKillSignal = useSelector((state) => state.databaseUI.transactionKillSignal);
+  const lastSeenKillSignal = useRef(transactionKillSignal);
+  useEffect(() => {
+    if (lastSeenKillSignal.current === transactionKillSignal) return;
+    lastSeenKillSignal.current = transactionKillSignal;
+    refresh();
+  }, [transactionKillSignal, hostUid, dbname]);
 
   const wasActiveAndExpanded = useRef(isTabActive && !isCollapsed);
   useEffect(() => {

@@ -53,6 +53,8 @@ export const databaseJobApi = {
 
   listActive: () => apiClient.get('/jobs/active', { timeout: JOB_POLL_TIMEOUT_MS }),
 
+  listRecent: () => apiClient.get('/jobs/recent', { timeout: JOB_POLL_TIMEOUT_MS }),
+
   submitUnload: (hostUid, dbname, payload) =>
     submitJob(`/${hostUid}/database/unload/${encodeURIComponent(dbname)}`, payload),
 

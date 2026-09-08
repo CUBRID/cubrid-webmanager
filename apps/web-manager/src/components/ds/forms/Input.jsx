@@ -49,7 +49,7 @@ export const Input = forwardRef(({
           type={type}
           disabled={disabled}
           value={value}
-          title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}
+          title={type !== 'password' && (typeof value === 'string' || typeof value === 'number') ? String(value) : undefined}
           onChange={(e) => {
             if (type === 'number' && e.target.value.length > 1 && e.target.value.startsWith('0')) {
               e.target.value = Number(e.target.value).toString();

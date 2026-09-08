@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeTransactionInfoModal, openKillTransactionModal } from '../databaseSlice';
 import { databaseApi } from '../databaseApi';
-import { extractTransactionList } from '../transactionUtils';
-import { Input } from '../../../components/ds/forms/Input';
+import { extractTransactionList, isHaReplicationProcess } from '../transactionUtils';
 import { Icon } from '../../../components/ds/foundation/Icon';
 import { Modal } from '../../../components/ds/layout/Modal';
 import { Button } from '../../../components/ds/foundation/Button';
@@ -19,7 +18,7 @@ const VIEW_ERROR = 'error';
 export default function TransactionInfoModal() {
   const CM = useCM();
   const dispatch = useDispatch();
-  const { isTransactionInfoModalOpen } = useSelector((state) => state.databaseUI, shallowEqual);
+  const { isTransactionInfoModalOpen, transactionKillSignal } = useSelector((state) => state.databaseUI, shallowEqual);
   const { selectedDatabase, activeDatabases } = useSelector((state) => state.database, shallowEqual);
   const { selectedHostUid } = useSelector((state) => state.host, shallowEqual);
 
@@ -29,18 +28,15 @@ export default function TransactionInfoModal() {
   const [transactions, setTransactions] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedTranIndex, setSelectedTranIndex] = useState(null);
-  const [dbuser, setDbuser] = useState('dba');
-  const [dbpasswd, setDbpasswd] = useState('');
 
+  // killtransaction/gettransactioninfo (CUBRID 11+) don't take dbuser/dbpasswd —
+  // they run under the already-authenticated CMS session, so there's nothing
+  // for a user to log into here. Kept as fixed defaults purely for CMS's
+  // pre-11 legacy branch, which does still read them.
   const fetchTransactionInfo = async () => {
     if (!selectedHostUid || !selectedDatabase) return;
     if (!isActive) {
       setErrorMsg('Database is stopped. Transaction information is only available when the database is running.');
-      setView(VIEW_ERROR);
-      return;
-    }
-    if (!dbuser.trim()) {
-      setErrorMsg(CM.dbUserRequiredForDiagnosticsMsg);
       setView(VIEW_ERROR);
       return;
     }
@@ -50,8 +46,8 @@ export default function TransactionInfoModal() {
 
     try {
       const response = await databaseApi.getTransactionInfo(selectedHostUid, selectedDatabase, {
-        dbuser: dbuser.trim(),
-        dbpasswd,
+        dbuser: 'dba',
+        dbpasswd: '',
       });
       setTransactions(extractTransactionList(response));
       setView(VIEW_SUCCESS);
@@ -67,6 +63,17 @@ export default function TransactionInfoModal() {
       fetchTransactionInfo();
     }
   }, [isTransactionInfoModalOpen, selectedHostUid, selectedDatabase]);
+
+  // A kill only ever happens from a transaction list this modal already fetched,
+  // so the credentials are known-good — safe to silently refetch instead of
+  // dropping the user back to the auth screen.
+  const lastSeenKillSignal = useRef(transactionKillSignal);
+  useEffect(() => {
+    if (!isTransactionInfoModalOpen || view !== VIEW_SUCCESS) return;
+    if (lastSeenKillSignal.current === transactionKillSignal) return;
+    lastSeenKillSignal.current = transactionKillSignal;
+    fetchTransactionInfo();
+  }, [transactionKillSignal]);
 
   if (!isTransactionInfoModalOpen) return null;
 
@@ -126,17 +133,13 @@ export default function TransactionInfoModal() {
       }
     >
       <div className="flex flex-col h-[540px] animate-in fade-in slide-in-from-bottom-4 duration-400">
-        <div className="mb-4 grid grid-cols-2 gap-3 shrink-0">
-          <Input data-testid="transaction-info-dbuser-input" label={CM.userName} value={dbuser} onChange={(e) => setDbuser(e.target.value)} icon="account_circle" size="sm" />
-          <Input data-testid="transaction-info-dbpasswd-input" type="password" label={CM.password} value={dbpasswd} onChange={(e) => setDbpasswd(e.target.value)} icon="password" size="sm" placeholder={CM.emptyAllowedPlaceholder} />
-        </div>
         <div className="mb-4 flex items-center justify-between bg-slate-50/80 dark:bg-black/20 border border-slate-200 dark:border-white/8 rounded-xl px-4 py-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20">
               <Icon name="sensors" size="sm" weight={300} />
             </div>
             <div className="min-w-0">
-              <Typography variant="label" className="text-slate-400 uppercase tracking-widest font-bold text-[10px] block leading-none">
+              <Typography variant="label" className="text-slate-400 uppercase tracking-widest font-bold text-[11px] block leading-none">
                 {CM.activeTransactionsOf} <span className="text-emerald-500 ml-1">{transactions.length}</span>
               </Typography>
             </div>
@@ -164,17 +167,25 @@ export default function TransactionInfoModal() {
                 {transactions.map((tran, idx) => {
                   const tranIndex = tran.tranindex;
                   const isSelected = String(selectedTranIndex) === String(tranIndex);
+                  const isHaProcess = isHaReplicationProcess(tran.program);
                   return (
                     <tr
                       key={idx}
-                      className={`cursor-pointer ${isSelected ? 'bg-amber-500/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                      className={`cursor-pointer ${isSelected ? 'bg-amber-500/10' : isHaProcess ? 'bg-amber-500/4 hover:bg-amber-500/8' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}
                       onClick={() => setSelectedTranIndex(tranIndex)}
                     >
                       <td className="px-4 py-2 font-mono">{tranIndex}</td>
                       <td className="px-4 py-2">{tran['@user'] || '-'}</td>
                       <td className="px-4 py-2 font-mono">{tran.host || '-'}</td>
                       <td className="px-4 py-2 font-mono">{tran.pid || '-'}</td>
-                      <td className="px-4 py-2">{tran.program || '-'}</td>
+                      <td className="px-4 py-2">
+                        <span className="inline-flex items-center gap-1">
+                          {isHaProcess && (
+                            <Icon name="warning" size="12px" weight={400} className="text-amber-500" title={CM.haReplicationProcessWarning} />
+                          )}
+                          {tran.program || '-'}
+                        </span>
+                      </td>
                       <td className="px-4 py-2 text-right font-mono">{tran.query_time ?? '-'}</td>
                       <td className="px-4 py-2 text-right font-mono">{tran.tran_time ?? '-'}</td>
                       <td className="px-4 py-2 text-right font-mono">{tran.wait_for_lock_holder ?? '-'}</td>

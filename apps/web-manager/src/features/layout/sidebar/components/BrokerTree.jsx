@@ -106,7 +106,7 @@ export default function BrokerTree({ hostUid, onContextMenu, onSqlLogContextMenu
               {!logsLoading && brokerLogs.length === 0 && (
                 <div className="px-10 py-3 opacity-30 flex items-center gap-2">
                     <Icon name="block" size="xs" weight={300} />
-                    <Typography variant="caption" className="italic font-bold uppercase tracking-widest text-[8px]">{CM.indexEmpty}</Typography>
+                    <Typography variant="caption" className="italic font-bold uppercase tracking-widest text-[8px]">{CM.emptyListLabel}</Typography>
                 </div>
               )}
             </TreeNode>

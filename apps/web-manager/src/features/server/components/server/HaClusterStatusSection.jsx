@@ -1,7 +1,11 @@
 import React from 'react';
 import { useSelector, shallowEqual } from 'react-redux';
 import { Icon } from '../../../../components/ds/foundation/Icon';
+import { extractHaHeartbeatNodes } from '../../../host/haPeerUtils';
 import { useCM } from '../../../../constants/useCM';
+
+const ROLE_ORDER = { MASTER: 0, SLAVE: 1, REPLICA: 2 };
+const getRolePriority = (state) => ROLE_ORDER[(state || '').toUpperCase()] ?? 3;
 
 const getNodeStateColor = (state) => {
   const normalized = (state || 'unknown').toUpperCase();
@@ -29,10 +33,9 @@ export default function HaClusterStatusSection({ hostUid }) {
     return null;
   }
 
-  const rawNodeGroups = hostData.haHeartbeat.hanodelist;
-  const nodeGroups = Array.isArray(rawNodeGroups) ? rawNodeGroups : (rawNodeGroups ? [rawNodeGroups] : []);
-  const rawNodes = nodeGroups[0]?.node;
-  const nodes = Array.isArray(rawNodes) ? rawNodes : (rawNodes ? [rawNodes] : []);
+  const nodes = extractHaHeartbeatNodes(hostData.haHeartbeat)
+    .slice()
+    .sort((a, b) => getRolePriority(a.status || a.state) - getRolePriority(b.status || b.state));
 
   return (
     <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">

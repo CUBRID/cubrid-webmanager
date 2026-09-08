@@ -54,6 +54,7 @@ export function CmsJobProvider({ children }) {
       setJobResults((prev) => [
         ...prev,
         {
+          jobId: job.jobId,
           type: job.type,
           dbname: job.dbname,
           status: job.jobStatus,
@@ -65,6 +66,16 @@ export function CmsJobProvider({ children }) {
     },
     []
   );
+
+  // Lets a caller that's still mounted and showing its own result (via
+  // useCmsJob's runJob) suppress the global toast for that same job, so the
+  // two don't both appear for one completion. If the caller already
+  // unmounted (e.g. user clicked "continue in background"), this never gets
+  // called and the global toast remains the only notification.
+  const dismissJobResult = useCallback((jobId) => {
+    if (!jobId) return;
+    setJobResults((prev) => prev.filter((r) => r.jobId !== jobId));
+  }, []);
 
   const startTracking = useCallback(
     async (jobId, options = {}) => {
@@ -185,12 +196,20 @@ export function CmsJobProvider({ children }) {
     let cancelled = false;
     (async () => {
       try {
-        const active = await databaseJobApi.listActive();
+        // listRecent (not listActive) so a job that finished while this
+        // client was gone (tab closed/reloaded) still shows up in the tray
+        // with its final result — listActive alone only returns jobs still
+        // queued/running, silently losing anything that completed meanwhile
+        // even though its record is still on disk.
+        const recent = await databaseJobApi.listRecent();
         if (cancelled) return;
-        for (const job of active) {
-          const status = normalizeTrackedJob(job).jobStatus;
-          if (!isTerminalCmsJobStatus(status)) {
-            upsertJob(job.jobId, normalizeTrackedJob(job));
+        for (const job of recent) {
+          const normalized = normalizeTrackedJob(job);
+          upsertJob(job.jobId, normalized);
+          // Only resume live polling for jobs still actually in flight —
+          // a terminal job just needs to be visible, not re-notified as if
+          // it had completed just now.
+          if (!isTerminalCmsJobStatus(normalized.jobStatus)) {
             startTracking(job.jobId, {
               notify: true,
               initialJob: job,
@@ -198,7 +217,7 @@ export function CmsJobProvider({ children }) {
           }
         }
       } catch {
-        // ignore — user may not have active jobs endpoint yet
+        // ignore — user may not have the recent jobs endpoint yet
       }
     })();
 
@@ -236,6 +255,7 @@ export function CmsJobProvider({ children }) {
       runJob,
       trackJob,
       dismissJob,
+      dismissJobResult,
       clearCompleted,
     }),
     [
@@ -246,6 +266,7 @@ export function CmsJobProvider({ children }) {
       runJob,
       trackJob,
       dismissJob,
+      dismissJobResult,
       clearCompleted,
     ]
   );

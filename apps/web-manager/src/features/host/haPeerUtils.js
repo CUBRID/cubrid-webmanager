@@ -1,5 +1,74 @@
 import { flattenHostsFromGroups, findGroupIdForHost } from './hostGroupUtils';
 
+/** Node list from a `getHaHeartbeatList` response's `hanodelist[0].node`, normalized to an array. */
+export function extractHaHeartbeatNodes(haHeartbeat) {
+  const rawNodeGroups = haHeartbeat?.hanodelist;
+  const nodeGroups = Array.isArray(rawNodeGroups) ? rawNodeGroups : (rawNodeGroups ? [rawNodeGroups] : []);
+  const rawNodes = nodeGroups[0]?.node;
+  return Array.isArray(rawNodes) ? rawNodes : (rawNodes ? [rawNodes] : []);
+}
+
+/**
+ * True when `dbname` appears anywhere in the heartbeat's per-database HA
+ * status (`hadbinfolist[].server[].{dbmode,dbprocinfo,applylogdb,copylogdb}`)
+ * — i.e. this database is a live member of an HA pair, not just sitting on a
+ * host that happens to also run HA for some other database.
+ */
+export function isDatabaseInHa(haHeartbeat, dbname) {
+  const raw = haHeartbeat?.hadbinfolist;
+  if (!raw || !dbname) return false;
+
+  const ensureArray = (val) => {
+    if (!val) return [];
+    return Array.isArray(val) ? val : [val];
+  };
+
+  let found = false;
+  ensureArray(raw).forEach((entry) => {
+    const servers = entry?.server;
+    if (!servers) return;
+
+    ensureArray(servers).forEach((server) => {
+      if (!server) return;
+
+      ensureArray(server.dbmode).forEach((row) => {
+        if (row?.dbname === dbname) found = true;
+      });
+      ensureArray(server.dbprocinfo).forEach((row) => {
+        if (row?.dbname === dbname) found = true;
+      });
+      ensureArray(server.applylogdb).forEach((block) => {
+        if (block?.element) {
+          ensureArray(block.element).forEach((el) => {
+            if (el?.dbname === dbname) found = true;
+          });
+        }
+      });
+      ensureArray(server.copylogdb).forEach((block) => {
+        if (block?.element) {
+          ensureArray(block.element).forEach((el) => {
+            if (el?.dbname === dbname) found = true;
+          });
+        }
+      });
+    });
+  });
+
+  return found;
+}
+
+/**
+ * True when the heartbeat lists at least one node but none of them report
+ * MASTER — likely mid-failover. False (not abnormal) when there's no
+ * heartbeat data at all yet, so a still-loading dashboard isn't mistaken for
+ * a failover.
+ */
+export function isHaClusterMissingMaster(haHeartbeat) {
+  const nodes = extractHaHeartbeatNodes(haHeartbeat);
+  if (nodes.length === 0) return false;
+  return !nodes.some((node) => ((node.status || node.state || '').trim().toUpperCase()) === 'MASTER');
+}
+
 export function isHaPostLoginModalOpen(hostState) {
   return Boolean(
     hostState?.isDiscoveryModalOpen

@@ -45,7 +45,7 @@ export default function DBBrokersCASSection({ brokersCAS, pollingProps, onViewSQ
     },
     { header: 'CAS', accessor: 'id',  sortAccessor: '_idNum',  render: (val) => <span className="font-mono text-[12px] text-slate-400">{val}</span> },
     { header: 'PID', accessor: 'pid', sortAccessor: '_pidNum', render: (val) => <span className="font-mono text-[12px] text-slate-400">{val}</span> },
-    { header: CM.qps, accessor: 'qps', sortAccessor: '_qpsNum', render: (val) => <span className="font-mono text-[12px] text-amber-600 dark:text-amber-400 font-semibold">{val}</span> },
+    { header: CM.qps, accessor: 'qps', sortAccessor: '_qpsNum', render: (val) => <span className="font-mono text-[12px] text-amber-600 dark:text-amber-400 font-semibold">{val ?? '—'}</span> },
     { header: 'LQS', accessor: 'lqs', sortAccessor: '_lqsNum', render: (val) => <span className="font-mono text-[12px] text-slate-500">{val}</span> },
     {
       header: CM.status,

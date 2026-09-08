@@ -73,6 +73,7 @@ export default function HostGroupNameModal() {
       loading={loading}
       maxWidth="max-w-[480px]"
       testId="group-name"
+      onSubmit={handleSubmit}
       footer={
         <div className="flex justify-end gap-3 w-full">
           <Button data-testid="group-name-cancel-btn" variant="secondary" onClick={handleClose} disabled={loading}>

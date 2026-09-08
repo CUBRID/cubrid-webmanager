@@ -48,7 +48,7 @@ export default function CopyDatabaseModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -265,10 +265,12 @@ export default function CopyDatabaseModal() {
         () => databaseJobApi.submitCopy(selectedHostUid, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      dispatch(fetchDatabaseStartInfo(selectedHostUid));
-      endSuccess(`${CM.copyCompleted}: ${formData.destName}`);
+      if (!wasBackgrounded()) {
+        dispatch(fetchDatabaseStartInfo(selectedHostUid));
+        endSuccess(`${CM.copyCompleted}: ${formData.destName}`);
+      }
     } catch (err) {
-      endError(typeof err === 'string' ? err : (err.message || CM.operationFailed));
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : (err.message || CM.operationFailed));
     }
   };
 
@@ -284,7 +286,7 @@ export default function CopyDatabaseModal() {
         <ModalStatusLoading
           title={CM.synchronizingVolumes}
           subtitle={getCmsJobLoadingSubtitle(formData.destName, jobStatus, CM)}
-          onBackground={handleClose}
+          onBackground={() => { background(); handleClose(); }}
         />
       </Modal>
     );
@@ -308,9 +310,10 @@ export default function CopyDatabaseModal() {
   if (isError) {
     return (
       <Modal isOpen title={CM.cloningFailed} icon="content_copy" iconVariant="danger" onClose={resetAction} maxWidth="640px">
-        <ModalStatusError 
+        <ModalStatusError
           title={CM.operationInterrupted}
           error={error}
+          guidance={CM.copyDbGuidance}
           onRetry={handleCopy}
           onCancel={resetAction}
           retryText={CM.retryClone}
@@ -330,6 +333,7 @@ export default function CopyDatabaseModal() {
       icon="content_copy"
       maxWidth="820px"
       testId="copy-database"
+      onSubmit={handleCopy}
       footer={
         <div className="flex justify-end gap-3 w-full">
           <Button data-testid="copy-database-cancel-btn" variant="ghost" onClick={handleClose}>{CM.cancel}</Button>

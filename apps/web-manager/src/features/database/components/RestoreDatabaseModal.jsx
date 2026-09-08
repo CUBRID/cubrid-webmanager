@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import { closeRestoreDatabaseModal, fetchBackupList } from '../databaseSlice';
+import { dbKey } from '../dbKey';
 import { databaseJobApi } from '../databaseJobApi';
 import { useCmsJob } from '../../../infrastructure/hooks/useCmsJob';
 import { getCmsJobLoadingSubtitle } from '../../../infrastructure/cmsJob/cmsJobUi';
@@ -142,7 +143,7 @@ export default function RestoreDatabaseModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -175,7 +176,7 @@ export default function RestoreDatabaseModal() {
     });
   };
 
-  const backupData = databaseBackups[selectedDatabase] || {};
+  const backupData = databaseBackups[dbKey(selectedHostUid, selectedDatabase)] || {};
   const allBackups = useMemo(() => {
     return [
       ...(Array.isArray(backupData.level0) ? backupData.level0.map(b => ({ ...b, level: 0 })) : parseBackupString(backupData.level0, 0)),
@@ -190,7 +191,7 @@ export default function RestoreDatabaseModal() {
 
 
   const backups = filter === 'all' ? allBackups : allBackups.filter(b => b.level === filter);
-  const isLoadingBackups = databaseBackupsLoading[selectedDatabase];
+  const isLoadingBackups = databaseBackupsLoading[dbKey(selectedHostUid, selectedDatabase)];
 
   useEffect(() => {
     if (isRestoreDatabaseModalOpen && selectedHostUid && selectedDatabase) {
@@ -492,9 +493,9 @@ export default function RestoreDatabaseModal() {
         () => databaseJobApi.submitRestore(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      endSuccess(selectedDatabase);
+      if (!wasBackgrounded()) endSuccess(selectedDatabase);
     } catch (error) {
-      endError(typeof error === 'string' ? error : (error.message || CM.restoreErrorFallback));
+      if (!wasBackgrounded()) endError(typeof error === 'string' ? error : (error.message || CM.restoreErrorFallback));
     }
   };
 
@@ -510,7 +511,7 @@ export default function RestoreDatabaseModal() {
           title={CM.reconstructingInstance}
           subtitle={getCmsJobLoadingSubtitle(selectedDatabase, jobStatus, CM)}
           variant="danger"
-          onBackground={handleClose}
+          onBackground={() => { background(); handleClose(); }}
         />
       </Modal>
     );
@@ -534,9 +535,10 @@ export default function RestoreDatabaseModal() {
   if (isError) {
     return (
       <Modal isOpen title={CM.recoveryFailed} icon="restore" iconVariant="danger" onClose={resetAction} maxWidth="900px">
-        <ModalStatusError 
+        <ModalStatusError
           title={CM.transactionDropped}
           error={actionError}
+          guidance={CM.restoreDbGuidance}
           onRetry={handleRestore}
           onCancel={resetAction}
           retryText={CM.retryRecovery}
@@ -556,6 +558,7 @@ export default function RestoreDatabaseModal() {
       icon="settings_backup_restore"
       maxWidth="680px"
       testId="restore-database"
+      onSubmit={handleRestore}
       footer={
         <div className="flex items-center justify-between w-full gap-3">
           <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">

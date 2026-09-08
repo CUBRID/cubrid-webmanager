@@ -13,6 +13,7 @@ import {
   deleteGroup,
   ensureHostGroupsWritable,
   ensureUngroupedGroup,
+  findDuplicateAlias,
   findDuplicateHost,
   findHostRef,
   getHost,
@@ -66,6 +67,11 @@ export class HostService {
       const duplicate = findDuplicateHost(user, { ...hostInfo, alias });
       if (duplicate) {
         throw HostError.DuplicatedHost({ duplicatedHostId: duplicate.uid });
+      }
+
+      const duplicateAlias = findDuplicateAlias(user, alias);
+      if (duplicateAlias) {
+        throw HostError.DuplicatedAlias({ duplicatedHostId: duplicateAlias.uid, alias });
       }
 
       const newHost: HostInfo = {
@@ -186,6 +192,11 @@ export class HostService {
       );
       if (duplicate) {
         throw HostError.DuplicatedHost({ duplicatedHostId: duplicate.uid });
+      }
+
+      const duplicateAlias = findDuplicateAlias(user, proposedAlias, hostUid);
+      if (duplicateAlias) {
+        throw HostError.DuplicatedAlias({ duplicatedHostId: duplicateAlias.uid, alias: proposedAlias });
       }
 
       ref.group.hosts[hostUid] = {

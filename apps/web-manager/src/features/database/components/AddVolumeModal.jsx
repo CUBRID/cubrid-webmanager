@@ -59,8 +59,9 @@ const SIZE_PRESETS = [
   { label: '256 MB', mb: 256 },
   { label: '512 MB', mb: 512 },
   { label: '1 GB', mb: 1024 },
-  { label: '2 GB', mb: 2048 },
   { label: '4 GB', mb: 4096 },
+  { label: '10 GB', mb: 10240 },
+  { label: '20 GB', mb: 20480 },
 ];
 
 export default function AddVolumeModal() {
@@ -81,14 +82,23 @@ export default function AddVolumeModal() {
     isSuccess,
     isError
   } = useActionState();
-  const { runJob } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
 
   const [volStatus, setVolStatus] = useState({ freespace: '', volpath: '' });
   const [purpose, setPurpose] = useState('data');
   const [path, setPath] = useState('');
   const [sizeMB, setSizeMB] = useState(512);
+  const [sizeUnit, setSizeUnit] = useState('MB');
   const [fetchingStatus, setFetchingStatus] = useState(false);
+
+  // Custom-capacity input displays/accepts whichever unit is selected, but
+  // sizeMB itself (used for numberOfPages/payload/presets) always stays in MB.
+  const displaySize = sizeUnit === 'GB' ? parseFloat((sizeMB / 1024).toFixed(3)) : sizeMB;
+  const handleDisplaySizeChange = (value) => {
+    const parsed = parseFloat(value) || 0;
+    setSizeMB(sizeUnit === 'GB' ? parsed * 1024 : parsed);
+  };
 
   const numberOfPages = Math.floor(sizeMB * 1024 / 16);
   const selectedPurpose = PURPOSE_OPTIONS.find(o => o.value === purpose);
@@ -133,9 +143,12 @@ export default function AddVolumeModal() {
         () => databaseJobApi.submitAddVol(selectedHostUid, selectedDatabase, payload),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      endSuccess();
+      // This job may have been backgrounded (and the modal reopened for a
+      // different database) by the time it settles — its outcome then
+      // belongs to the global job tray, not this now-reused modal instance.
+      if (!wasBackgrounded()) endSuccess();
     } catch (err) {
-      endError(typeof err === 'string' ? err : err.message || CM.failure);
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : err.message || CM.failure);
     }
   };
 
@@ -152,7 +165,7 @@ export default function AddVolumeModal() {
         <ModalStatusLoading
           title={CM.scalingFoundation}
           subtitle={getCmsJobLoadingSubtitle(selectedDatabase, jobStatus, CM)}
-          onBackground={handleClose}
+          onBackground={() => { background(); handleClose(); }}
         />
       </Modal>
     );
@@ -176,9 +189,10 @@ export default function AddVolumeModal() {
   if (isError) {
     return (
       <Modal isOpen title={CM.allocationInterrupted} icon="add_box" iconVariant="danger" onClose={resetAction} maxWidth="720px">
-        <ModalStatusError 
+        <ModalStatusError
           title={CM.scalingFailed}
           error={error}
+          guidance={CM.addVolumeGuidance}
           onRetry={handleAdd}
           onCancel={resetAction}
           retryText={CM.retryAddVolume}
@@ -198,6 +212,7 @@ export default function AddVolumeModal() {
       icon="add_to_drive"
       maxWidth="560px"
       testId="add-volume"
+      onSubmit={handleAdd}
       footer={
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-widest italic">
@@ -319,11 +334,20 @@ export default function AddVolumeModal() {
             <Input
               type="number"
               label={CM.customCapacity}
-              value={sizeMB}
-              onChange={(e) => setSizeMB(parseFloat(e.target.value) || 0)}
+              value={displaySize}
+              onChange={(e) => handleDisplaySizeChange(e.target.value)}
               icon="memory"
-              suffix="MB"
-              min={1}
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setSizeUnit((u) => (u === 'MB' ? 'GB' : 'MB'))}
+                  className="text-[10px] font-black text-slate-400 dark:text-slate-500 hover:text-amber-500 uppercase tracking-widest bg-slate-100 dark:bg-white/5 hover:bg-amber-500/10 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 transition-all cursor-pointer"
+                  title={CM.switchUnit}
+                >
+                  {sizeUnit}
+                </button>
+              }
+              min={0}
               size="sm"
             />
             <div className="space-y-1">
@@ -352,11 +376,11 @@ export default function AddVolumeModal() {
                   purpose === 'data' ? 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)]' :
                   'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
                 }`}
-                style={{ width: `${Math.min((sizeMB / 4096) * 100, 100)}%` }}
+                style={{ width: `${Math.min((sizeMB / 20480) * 100, 100)}%` }}
               />
             </div>
             <div className="flex justify-between text-[8px] text-slate-400 dark:text-slate-600 font-black uppercase tracking-widest">
-              <span>Empty</span><span>1 GB</span><span>2 GB</span><span>Max (4GB)</span>
+              <span>Empty</span><span>5 GB</span><span>10 GB</span><span>Max (20GB)</span>
             </div>
           </div>
         </div>

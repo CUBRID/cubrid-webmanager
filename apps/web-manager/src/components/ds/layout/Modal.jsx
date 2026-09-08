@@ -26,6 +26,9 @@ export const Modal = ({
 }) => {
   const CM = useCM();
   const modalRef = useRef(null);
+  // Element focused before the modal opened — restored on close so keyboard
+  // users land back where they were instead of on <body>.
+  const previouslyFocusedRef = useRef(null);
 
   useEffect(() => {
     if (!showCloseButton) return undefined;
@@ -50,6 +53,66 @@ export const Modal = ({
     document.addEventListener('keydown', handleEnter);
     return () => document.removeEventListener('keydown', handleEnter);
   }, [isOpen, onSubmit]);
+
+  // Focus trap: Tab/Shift+Tab cycle only through the modal's own focusable
+  // elements instead of escaping to whatever's behind it. Also moves initial
+  // focus into the modal on open and restores it to the trigger on close.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const FOCUSABLE_SELECTOR =
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    const getFocusable = () => {
+      if (!modalRef.current) return [];
+      return Array.from(modalRef.current.querySelectorAll(FOCUSABLE_SELECTOR))
+        .filter((el) => el.offsetParent !== null); // skip hidden elements
+    };
+
+    previouslyFocusedRef.current = document.activeElement;
+
+    // Defer to the next frame so the modal's children (often conditionally
+    // rendered) have mounted before we look for something to focus.
+    const focusFrame = requestAnimationFrame(() => {
+      const focusable = getFocusable();
+      const autoFocusEl = modalRef.current?.querySelector('[autofocus]');
+      (autoFocusEl || focusable[0] || modalRef.current)?.focus();
+    });
+
+    const handleTab = (e) => {
+      if (e.key !== 'Tab') return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (e.shiftKey) {
+        if (active === first || !modalRef.current?.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !modalRef.current?.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleTab);
+
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', handleTab);
+      // Only restore if focus is still inside this modal (or gone entirely)
+      // — avoids yanking focus away if another modal already took over.
+      const active = document.activeElement;
+      if (!active || active === document.body || modalRef.current?.contains(active)) {
+        previouslyFocusedRef.current?.focus?.();
+      }
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -82,8 +145,9 @@ export const Modal = ({
       {/* Modal panel */}
       <div
         ref={modalRef}
+        tabIndex={-1}
         data-testid={testId ? `${testId}-modal` : undefined}
-        className={`relative w-full ${maxWidth.startsWith('max-w-') ? maxWidth : ''} bg-white dark:bg-bk-side rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-slate-200 dark:border-slate-800 transform transition-all flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden text-left`}
+        className={`relative w-full ${maxWidth.startsWith('max-w-') ? maxWidth : ''} bg-white dark:bg-bk-side rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-slate-200 dark:border-slate-800 transform transition-all flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden text-left outline-hidden`}
         style={!maxWidth.startsWith('max-w-') ? { maxWidth } : {}}
         role="dialog"
         aria-modal="true"
@@ -121,7 +185,7 @@ export const Modal = ({
           </div>
         </div>
 
-        <div className="px-5 py-5 overflow-y-auto custom-scrollbar flex-1">
+        <div className="px-5 py-5 overflow-y-auto overflow-x-auto custom-scrollbar flex-1">
           {children}
         </div>
 

@@ -142,6 +142,7 @@ export default function ReconnectHostModal() {
       loading={isReconnecting}
       maxWidth="max-w-[440px]"
       testId="reconnect-host"
+      onSubmit={handleReconnect}
       footer={
         <>
           <Button

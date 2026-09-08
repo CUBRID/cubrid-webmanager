@@ -58,6 +58,16 @@ export const usePollingRefresh = ({ hostUid, tabId, pollingIntervalSeconds, onFe
     }
   }, [dispatch, hostUid, authorizedHosts, onFetch, tabId]);
 
+  // Callers pass `onFetch` as an inline closure that's recreated every render,
+  // so `handleRefresh` itself gets a new identity every render too. Effects
+  // below that need to fire the LATEST refresh without tearing down and
+  // rebuilding a live timer/listener on every unrelated re-render read this
+  // ref instead of depending on `handleRefresh` directly.
+  const handleRefreshRef = useRef(handleRefresh);
+  useEffect(() => {
+    handleRefreshRef.current = handleRefresh;
+  }, [handleRefresh]);
+
   const lastProcessedCounterRef = useRef(refreshCounter);
   // 2. Global Refresh (F5 / Ctrl+R) Listener
   useEffect(() => {
@@ -103,19 +113,23 @@ export const usePollingRefresh = ({ hostUid, tabId, pollingIntervalSeconds, onFe
     }
   }, [isTabActive, handleRefresh, pollingIntervalSeconds]);
 
-  // 5. Polling Timer
+  // 5. Polling Timer — deliberately NOT depending on `handleRefresh` (see
+  // handleRefreshRef above): callers pass a fresh `onFetch` closure every
+  // render, so depending on it here would tear down and restart this timer
+  // on every unrelated re-render, and a component that re-renders faster
+  // than the interval would never let it actually elapse.
   useEffect(() => {
     if (!isTabActive || pollingIntervalSeconds <= 0) return;
 
     const timer = setInterval(() => {
       // Extra safety check to avoid overlapping fetches if the user spams tabs
       if (isActiveRef.current) {
-        handleRefresh(true);
+        handleRefreshRef.current(true);
       }
     }, pollingIntervalSeconds * 1000);
 
     return () => clearInterval(timer);
-  }, [isTabActive, pollingIntervalSeconds, handleRefresh]);
+  }, [isTabActive, pollingIntervalSeconds]);
 
   // 6. Network Recovery — re-fetch immediately when the browser comes back online,
   // but only if this view is the active foreground tab (same guard as the polling timer).

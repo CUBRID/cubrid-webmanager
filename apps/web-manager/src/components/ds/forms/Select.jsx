@@ -38,7 +38,12 @@ export const Select = ({
         position: 'fixed',
         top: rect.bottom + 4,
         left: rect.left,
-        width: rect.width,
+        // minWidth (not width) lets the popup grow to fit longer option
+        // labels instead of truncating them down to the trigger's own width
+        // — a narrow trigger (e.g. sharing a row with another field) would
+        // otherwise clip labels like "Specific days".
+        minWidth: rect.width,
+        maxWidth: Math.max(rect.width, 320),
         zIndex: 9999,
       });
     }

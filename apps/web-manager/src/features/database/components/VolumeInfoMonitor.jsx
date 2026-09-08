@@ -29,8 +29,8 @@ export default function VolumeInfoMonitor({ tabId }) {
   const [, hostUid, dbname, volname] = tabId.split(':');
 
   const { spaceInfo, spaceInfoLoading } = useSelector((state) => state.databaseMonitoring || {}, shallowEqual);
-  const dbSpace = spaceInfo?.[dbname];
-  const isLoading = spaceInfoLoading?.[dbname];
+  const dbSpace = spaceInfo?.[`${hostUid}:${dbname}`];
+  const isLoading = spaceInfoLoading?.[`${hostUid}:${dbname}`];
 
   const { isManualRefreshing: isRefreshing, lastRefreshed, handleRefresh } = usePollingRefresh({
     hostUid,

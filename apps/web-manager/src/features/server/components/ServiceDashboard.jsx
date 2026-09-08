@@ -341,7 +341,7 @@ const Component = function ServiceDashboard() {
         if (row._type === 'group') return <span className="text-slate-300">—</span>;
         const isConnected = authorizedHosts.includes(row.uid);
         const v = isConnected ? summaries[row.uid]?.permFree : undefined;
-        if (v === undefined || v === -1) return <span className="text-slate-300">—</span>;
+        if (v === undefined || v === -1 || Number.isNaN(v)) return <span className="text-slate-300">—</span>;
         return <Badge variant={v > 30 ? 'success' : v > 10 ? 'warning' : 'danger'}>{v}%</Badge>;
       }
     },
@@ -352,7 +352,7 @@ const Component = function ServiceDashboard() {
         if (row._type === 'group') return <span className="text-slate-300">—</span>;
         const isConnected = authorizedHosts.includes(row.uid);
         const v = isConnected ? summaries[row.uid]?.permTempFree : undefined;
-        if (v === undefined || v === -1) return <span className="text-slate-300">—</span>;
+        if (v === undefined || v === -1 || Number.isNaN(v)) return <span className="text-slate-300">—</span>;
         return <Badge variant={v > 30 ? 'success' : v > 10 ? 'warning' : 'danger'}>{v}%</Badge>;
       }
     },
@@ -363,7 +363,7 @@ const Component = function ServiceDashboard() {
         if (row._type === 'group') return <span className="text-slate-300">—</span>;
         const isConnected = authorizedHosts.includes(row.uid);
         const v = isConnected ? summaries[row.uid]?.tempTempFree : undefined;
-        if (v === undefined || v === -1) return <span className="text-slate-300">—</span>;
+        if (v === undefined || v === -1 || Number.isNaN(v)) return <span className="text-slate-300">—</span>;
         return <Badge variant={v > 30 ? 'success' : v > 10 ? 'warning' : 'danger'}>{v}%</Badge>;
       }
     },

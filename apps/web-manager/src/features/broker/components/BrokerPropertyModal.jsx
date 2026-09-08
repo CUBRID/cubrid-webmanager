@@ -14,6 +14,7 @@ import { Input } from '../../../components/ds/forms/Input';
 import { Select } from '../../../components/ds/forms/Select';
 import { Typography } from '../../../components/ds/foundation/Typography';
 import { SectionHeader } from '../../../components/ds/foundation/SectionHeader';
+import { ModalStatusError } from '../../../components/ds/feedback/ActionStatus';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const BROKER_PARAMETERS = [
@@ -225,6 +226,21 @@ export default function BrokerPropertyModal() {
   ];
 
   if (!isOpen) return null;
+
+  if (viewStatus === ViewStatus.ERROR) {
+    return (
+      <Modal isOpen title={CM.brokerProperties} icon="error" iconVariant="danger" onClose={handleClose} maxWidth="max-w-[500px]">
+        <ModalStatusError
+          title={CM.failure}
+          error={errorMessage}
+          guidance={CM.brokerOperationGuidance}
+          onRetry={handleSave}
+          onCancel={handleClose}
+          cancelText={CM.dismiss}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal

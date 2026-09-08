@@ -83,6 +83,7 @@ export default function DropUserModal() {
         <ModalStatusError
           title={CM.operationInterrupted}
           error={actionError}
+          guidance={CM.dropUserGuidance}
           onRetry={handleDrop}
           onCancel={resetAction}
           retryText={CM.retry}

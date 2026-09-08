@@ -133,9 +133,22 @@ export default function CreateDatabaseModal() {
     isError
   } = useActionState();
 
-  const { runJob } = useCmsJob();
+  const { runJob, background } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
-  const jobDismissedRef = useRef(false);
+  // The database itself can succeed while a follow-up step (auto-start,
+  // dba password, auto-add-vol config) fails — the job still reports
+  // 'succeeded' for that (see cms-job.service.ts's applyCmsOutcome), so this
+  // surfaces which follow-up steps didn't apply instead of the plain
+  // success message hiding it.
+  const [creationWarning, setCreationWarning] = useState(null);
+  // Identifies the most recent handleFinish() call. This modal is a
+  // singleton reused for the next database the user opens it for — a
+  // shared boolean reset on every reopen (the old jobDismissedRef) meant an
+  // older, backgrounded create job could still resolve after the user
+  // reopened the modal for a different database, and would flip the modal
+  // to its success view using whatever form data is *currently* filled in
+  // instead of the database that job actually created.
+  const currentCreateInvocationRef = useRef(null);
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -161,10 +174,10 @@ export default function CreateDatabaseModal() {
     if (!selectedHostUid || hasInitializedRef.current) return;
     hasInitializedRef.current = true;
 
-    jobDismissedRef.current = false;
     setStep(1);
     resetAction();
     setFormData(INITIAL_FORM_DATA);
+    setCreationWarning(null);
 
     // Backend fallback in case hostEnv (below) never arrives or is stale.
     // Uses functional merges (prev.x || dir), so it's safe even if the user
@@ -267,6 +280,9 @@ export default function CreateDatabaseModal() {
   const handleFinish = async () => {
     if (!selectedHostUid) return;
 
+    const invocation = { dismissed: false };
+    currentCreateInvocationRef.current = invocation;
+
     startAction();
     try {
       const exvol = formData.volumes.map(vol => ({
@@ -308,11 +324,11 @@ export default function CreateDatabaseModal() {
         }
       };
 
-      await runJob(
+      const finishedJob = await runJob(
         () => databaseJobApi.submitCreate(selectedHostUid, payload),
         {
           onProgress: (j) => {
-            if (!jobDismissedRef.current) {
+            if (!invocation.dismissed) {
               setJobStatus(j.jobStatus ?? j.status);
             }
           },
@@ -321,11 +337,27 @@ export default function CreateDatabaseModal() {
 
       dispatch(fetchDatabaseStartInfo({ hostUid: selectedHostUid, isBackground: true }));
 
-      if (!jobDismissedRef.current) {
+      // The database itself can be created successfully even when a
+      // follow-up step (start, dba password, auto-add-vol config) didn't
+      // apply — surface which ones so it isn't silently lost.
+      const result = finishedJob?.result;
+      const failedSteps = [
+        result?.startDatabase?.success === false && { label: CM.startDatabase, message: result.startDatabase.error?.message },
+        result?.updateUser?.success === false && { label: CM.wizardSetDbaPass, message: result.updateUser.error?.message },
+        result?.setAutoAddVol?.success === false && { label: CM.wizardAutoVol, message: result.setAutoAddVol.error?.message },
+        result?.setAutoStart?.success === false && { label: CM.autoStart, message: result.setAutoStart.error?.message },
+      ].filter(Boolean);
+      setCreationWarning(
+        failedSteps.length > 0
+          ? failedSteps.map((s) => `${s.label}: ${s.message || CM.databaseCreationErrorMsg}`).join(' / ')
+          : null
+      );
+
+      if (!invocation.dismissed) {
         endSuccess(CM.databaseInitializedMsg(formData.dbName));
       }
     } catch (err) {
-      if (!jobDismissedRef.current) {
+      if (!invocation.dismissed) {
         const msg =
           err?.response?.data?.note ||
           err?.response?.data?.message ||
@@ -337,13 +369,23 @@ export default function CreateDatabaseModal() {
   };
 
   const handleClose = () => {
-    if (isLoading) {
-      jobDismissedRef.current = true;
+    if (isLoading && currentCreateInvocationRef.current) {
+      currentCreateInvocationRef.current.dismissed = true;
     }
     dispatch(closeCreateDatabaseModal());
     setStep(1);
     setFormData(INITIAL_FORM_DATA);
     resetAction();
+  };
+
+  // Mirrors the footer's step-dependent primary button: Next (gated by
+  // isFormValid) on steps 1-4, Finish on step 5.
+  const handleFormSubmit = () => {
+    if (step < 5) {
+      if (isFormValid()) handleNext();
+    } else {
+      handleFinish();
+    }
   };
 
   const totalStorage = formData.genericVolSize + formData.logVolSize + formData.volumes.reduce((a, v) => a + v.size, 0);
@@ -356,7 +398,7 @@ export default function CreateDatabaseModal() {
         <ModalStatusLoading
           title={CM.createDatabase}
           subtitle={getCmsJobLoadingSubtitle(formData.dbName, jobStatus, CM)}
-          onBackground={handleClose}
+          onBackground={() => { background(); handleClose(); }}
         />
       </Modal>
     );
@@ -365,10 +407,22 @@ export default function CreateDatabaseModal() {
   /* ─── SUCCESS view ─── */
   if (isSuccess) {
     return (
-      <Modal isOpen title={CM.createDatabase} icon="add_circle" iconVariant="success" onClose={handleClose} maxWidth="600px" testId="create-database">
+      <Modal
+        isOpen
+        title={CM.createDatabase}
+        icon={creationWarning ? 'warning' : 'add_circle'}
+        iconVariant={creationWarning ? 'warning' : 'success'}
+        onClose={handleClose}
+        maxWidth="600px"
+        testId="create-database"
+      >
         <ModalStatusSuccess
           title={CM.success}
-          message={CM.createDbJobComplete(CM.createDatabase)}
+          message={
+            creationWarning
+              ? CM.createDbPartialWarningMsg(formData.dbName, creationWarning)
+              : CM.createDbJobComplete(CM.createDatabase)
+          }
           onConfirm={handleClose}
           confirmText={CM.ok}
         />
@@ -383,6 +437,7 @@ export default function CreateDatabaseModal() {
         <ModalStatusError
           title={CM.failure}
           error={error}
+          guidance={CM.createDbGuidance}
           onRetry={handleFinish}
           onCancel={resetAction}
           cancelText={CM.close}
@@ -401,6 +456,7 @@ export default function CreateDatabaseModal() {
       icon="add_circle"
       maxWidth="780px"
       testId="create-database"
+      onSubmit={handleFormSubmit}
       footer={
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -662,12 +718,24 @@ export default function CreateDatabaseModal() {
                       />
                       <Input
                         type="number"
-                        value={vol.size}
-                        onChange={(e) => handleVolumeChange(idx, 'size', Number(e.target.value))}
+                        value={vol.unit === 'GB' ? parseFloat((vol.size / 1024).toFixed(3)) : vol.size}
+                        onChange={(e) => {
+                          const parsed = Number(e.target.value) || 0;
+                          handleVolumeChange(idx, 'size', vol.unit === 'GB' ? parsed * 1024 : parsed);
+                        }}
                         size="sm"
-                        min={1}
+                        min={0}
                         placeholder={CM.sizeMb}
-                        suffix="MB"
+                        suffix={
+                          <button
+                            type="button"
+                            onClick={() => handleVolumeChange(idx, 'unit', vol.unit === 'GB' ? 'MB' : 'GB')}
+                            className="text-[10px] font-black text-slate-400 dark:text-slate-500 hover:text-amber-500 uppercase tracking-widest bg-slate-100 dark:bg-white/5 hover:bg-amber-500/10 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 transition-all cursor-pointer"
+                            title={CM.switchUnit}
+                          >
+                            {vol.unit === 'GB' ? 'GB' : 'MB'}
+                          </button>
+                        }
                       />
                       <Input
                         value={vol.path}

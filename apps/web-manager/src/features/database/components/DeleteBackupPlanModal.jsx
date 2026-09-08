@@ -109,6 +109,7 @@ export default function DeleteBackupPlanModal() {
         <ModalStatusError
           title={CM.operationInterrupted}
           error={actionError}
+          guidance={CM.deleteBackupPlanGuidance}
           onRetry={handleDelete}
           onCancel={resetAction}
           retryText={CM.retryDeletion}

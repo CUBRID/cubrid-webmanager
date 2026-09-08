@@ -221,8 +221,8 @@ const Component = function VolumeCategoryMonitor({ hostUid, dbname, category }) 
     onFetch: () => (dispatch) => dispatch(fetchDatabaseSpaceInfo({ hostUid, dbname }))
   });
 
-  const dbSpace = spaceInfo[dbname];
-  const isLoading = spaceInfoLoading?.[dbname];
+  const dbSpace = spaceInfo[`${hostUid}:${dbname}`];
+  const isLoading = spaceInfoLoading?.[`${hostUid}:${dbname}`];
   const meta = useMemo(() => {
     const categoryMeta = getCategoryMeta(CM);
     return categoryMeta[category] || categoryMeta.Permanent_PermanentData;

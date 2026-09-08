@@ -9,6 +9,8 @@ import { DatabaseInfoService } from '../info/database-info.service';
 import { HaService } from '@ha';
 import { DatabaseUserService } from '../user/database-user.service';
 import { DatabaseConfigService } from '../config/database-config.service';
+import { BrokerService } from '@broker';
+import { CmsJobLockService } from '@cms-job/cms-job-lock.service';
 import { DatabaseError } from '@error/database/database-error';
 import { DatabaseErrorCode } from '@error/database/database-error-code';
 import { HostError } from '@error/index';
@@ -27,6 +29,7 @@ describe('DatabaseLifecycleService', () => {
   let databaseUserService: jest.Mocked<DatabaseUserService>;
   let databaseConfigService: jest.Mocked<DatabaseConfigService>;
   let databaseInfoService: DatabaseInfoService;
+  let cmsJobLockService: { hasActiveJobForHost: jest.Mock };
 
   const mockHost = {
     uid: 'host-uid-1',
@@ -81,12 +84,23 @@ describe('DatabaseLifecycleService', () => {
       updateUser: jest.fn(),
       loginDatabase: jest.fn().mockResolvedValue({}),
       getUserInfo: jest.fn().mockResolvedValue({ user: [] }),
+      ensureDbLogin: jest.fn().mockResolvedValue({ reauthenticated: false }),
+      deleteDbProfile: jest.fn().mockResolvedValue(undefined),
     };
 
     const mockDatabaseConfigService = {
       setAutoAddVol: jest.fn(),
       setAutoStart: jest.fn(),
       removeAutoStart: jest.fn(),
+    };
+
+    const mockBrokerService = {
+      startAllBrokers: jest.fn().mockResolvedValue({ success: true }),
+      stopAllBrokers: jest.fn().mockResolvedValue({ success: true }),
+    };
+
+    const mockCmsJobLockService = {
+      hasActiveJobForHost: jest.fn().mockResolvedValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -122,6 +136,14 @@ describe('DatabaseLifecycleService', () => {
           useValue: mockDatabaseConfigService,
         },
         HaService,
+        {
+          provide: BrokerService,
+          useValue: mockBrokerService,
+        },
+        {
+          provide: CmsJobLockService,
+          useValue: mockCmsJobLockService,
+        },
       ],
     }).compile();
 
@@ -134,6 +156,7 @@ describe('DatabaseLifecycleService', () => {
     databaseUserService = module.get(DatabaseUserService);
     databaseConfigService = module.get(DatabaseConfigService);
     databaseInfoService = module.get(DatabaseInfoService);
+    cmsJobLockService = module.get(CmsJobLockService);
 
     // Setup default mocks
     hostService.findHostInternal.mockResolvedValue(mockHost);
@@ -181,6 +204,7 @@ describe('DatabaseLifecycleService', () => {
           },
         ],
       },
+      haDbNames: [],
     };
 
     it('should return start info with profile existence', async () => {
@@ -204,6 +228,7 @@ describe('DatabaseLifecycleService', () => {
             },
           ],
         },
+        haDbNames: [],
       });
     });
 
@@ -278,6 +303,15 @@ describe('DatabaseLifecycleService', () => {
           dbname: mockDbname,
         })
       );
+    });
+
+    it('should throw when a CMS job is already running on this host', async () => {
+      cmsJobLockService.hasActiveJobForHost.mockResolvedValue({ jobId: 'job-1', dbname: 'otherdb' });
+
+      await expect(service.startDatabase(mockUserId, mockHostUid, mockDbname)).rejects.toThrow(
+        DatabaseError
+      );
+      expect(cmsClient.postAuthenticated).not.toHaveBeenCalled();
     });
 
     it('should throw CmsError when CMS status is fail', async () => {
@@ -424,6 +458,97 @@ describe('DatabaseLifecycleService', () => {
       await jest.runAllTimersAsync();
       await assertion;
       expect(databaseInfoService.startInfo).toHaveBeenCalledTimes(6);
+    });
+  });
+
+  describe('startAllDatabases', () => {
+    const successResponse = {
+      __EXEC_TIME: '10 ms',
+      note: 'none',
+      status: 'success',
+    };
+
+    it('starts every HA database with a single bulk ha_start, regardless of the passed dbnames', async () => {
+      jest.spyOn(databaseInfoService as any, 'getHaDbNames').mockResolvedValue(new Set(['hadb1', 'hadb2']));
+      cmsClient.postAuthenticated.mockResolvedValue({ ...successResponse, task: 'ha_start' });
+
+      const result = await service.startAllDatabases(mockUserId, mockHostUid, ['nonhadb']);
+
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        `https://${mockHost.address}:${mockHost.port}/cm_api`,
+        expect.objectContaining({ task: 'ha_start' })
+      );
+      // Only one ha_start call for both HA databases, not one per database.
+      const haStartCalls = cmsClient.postAuthenticated.mock.calls.filter(
+        ([, body]) => body.task === 'ha_start'
+      );
+      expect(haStartCalls).toHaveLength(1);
+      expect(haStartCalls[0][1]).not.toHaveProperty('dbname');
+      expect(result.succeeded).toEqual(expect.arrayContaining(['hadb1', 'hadb2']));
+    });
+
+    it('starts non-HA databases individually with startdb', async () => {
+      jest.spyOn(databaseInfoService as any, 'getHaDbNames').mockResolvedValue(new Set());
+      cmsClient.postAuthenticated.mockResolvedValue({ ...successResponse, task: 'startdb' });
+
+      const result = await service.startAllDatabases(mockUserId, mockHostUid, ['db1', 'db2']);
+
+      const startdbCalls = cmsClient.postAuthenticated.mock.calls.filter(
+        ([, body]) => body.task === 'startdb'
+      );
+      expect(startdbCalls).toHaveLength(2);
+      expect(result.succeeded).toEqual(expect.arrayContaining(['db1', 'db2']));
+      expect(result.failed).toEqual([]);
+    });
+
+    it('isolates a failed bulk ha_start from non-HA database results', async () => {
+      jest.spyOn(databaseInfoService as any, 'getHaDbNames').mockResolvedValue(new Set(['hadb1']));
+      cmsClient.postAuthenticated.mockImplementation((_url, body) => {
+        if (body.task === 'ha_start') {
+          return Promise.reject(new Error('heartbeat start: fail'));
+        }
+        return Promise.resolve({ ...successResponse, task: 'startdb' });
+      });
+
+      const result = await service.startAllDatabases(mockUserId, mockHostUid, ['nonhadb']);
+
+      expect(result.succeeded).toEqual(['nonhadb']);
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0].dbname).toBe('hadb1');
+    });
+  });
+
+  describe('stopAllDatabases', () => {
+    const successResponse = {
+      __EXEC_TIME: '10 ms',
+      note: 'none',
+      status: 'success',
+    };
+
+    it('stops every HA database with a single bulk ha_stop, regardless of the passed dbnames', async () => {
+      jest.spyOn(databaseInfoService as any, 'getHaDbNames').mockResolvedValue(new Set(['hadb1', 'hadb2']));
+      cmsClient.postAuthenticated.mockResolvedValue({ ...successResponse, task: 'ha_stop' });
+
+      const result = await service.stopAllDatabases(mockUserId, mockHostUid, ['nonhadb']);
+
+      const haStopCalls = cmsClient.postAuthenticated.mock.calls.filter(
+        ([, body]) => body.task === 'ha_stop'
+      );
+      expect(haStopCalls).toHaveLength(1);
+      expect(haStopCalls[0][1]).not.toHaveProperty('dbname');
+      expect(result.succeeded).toEqual(expect.arrayContaining(['hadb1', 'hadb2']));
+    });
+
+    it('skips the bulk ha_stop call entirely when the host has no HA databases', async () => {
+      jest.spyOn(databaseInfoService as any, 'getHaDbNames').mockResolvedValue(new Set());
+      cmsClient.postAuthenticated.mockResolvedValue({ ...successResponse, task: 'stopdb' });
+
+      await service.stopAllDatabases(mockUserId, mockHostUid, ['db1']);
+
+      const haStopCalls = cmsClient.postAuthenticated.mock.calls.filter(
+        ([, body]) => body.task === 'ha_stop'
+      );
+      expect(haStopCalls).toHaveLength(0);
     });
   });
 
@@ -611,6 +736,25 @@ describe('DatabaseLifecycleService', () => {
     });
   });
 
+  describe('deleteDatabaseProfile', () => {
+    it('delegates to databaseUserService and returns latest start info', async () => {
+      const mockStartInfoResponse = {
+        activelist: { active: [] },
+        dblist: { dbs: [] },
+      };
+      jest.spyOn(databaseInfoService, 'startInfo').mockResolvedValue(mockStartInfoResponse as any);
+
+      const result = await service.deleteDatabaseProfile(mockUserId, mockHostUid, mockDbname);
+
+      expect(databaseUserService.deleteDbProfile).toHaveBeenCalledWith(
+        mockUserId,
+        mockHostUid,
+        mockDbname
+      );
+      expect(result).toEqual(mockStartInfoResponse);
+    });
+  });
+
   describe('getDBSpaceInfo', () => {
     const mockDbSpaceInfoResponse = {
       __EXEC_TIME: '10 ms',
@@ -697,7 +841,8 @@ describe('DatabaseLifecycleService', () => {
       expect(service.createDatabaseInternal).toHaveBeenCalledWith(
         mockUserId,
         mockHostUid,
-        mockCreateDbRequest
+        mockCreateDbRequest,
+        undefined
       );
       expect(result).toEqual({
         createDatabase: {
@@ -734,7 +879,8 @@ describe('DatabaseLifecycleService', () => {
       expect(service.createDatabaseInternal).toHaveBeenCalledWith(
         mockUserId,
         mockHostUid,
-        mockCreateDbRequest
+        mockCreateDbRequest,
+        undefined
       );
       expect(databaseUserService.updateUser).toHaveBeenCalledWith(
         mockUserId,
@@ -798,6 +944,28 @@ describe('DatabaseLifecycleService', () => {
         { group: [] },
         []
       );
+    });
+
+    it('does not start the database or call updateUser when userpass is empty and auto-start is off', async () => {
+      const startDatabaseSpy = jest.spyOn(service, 'startDatabase');
+      const request = {
+        ...mockCreateDbRequest,
+        setAutoStart: false,
+        username: 'dba',
+        updateUser: {
+          userpass: '',
+        },
+      };
+
+      const result = await service.createDatabase(mockUserId, mockHostUid, request);
+
+      // A newly created database's dba user already has a blank password,
+      // so an empty userpass is a no-op — it shouldn't force the database
+      // to start just because the updateUser object was present.
+      expect(startDatabaseSpy).not.toHaveBeenCalled();
+      expect(databaseUserService.updateUser).not.toHaveBeenCalled();
+      expect(result.startDatabase).toBeUndefined();
+      expect(result.updateUser).toBeUndefined();
     });
 
     it('should handle createDatabase failure and continue with other operations', async () => {
@@ -983,7 +1151,9 @@ describe('DatabaseLifecycleService', () => {
           task: 'createdb',
           logsize: '32768',
           logpagesize: '16384',
-        })
+          async: 'yes',
+        }),
+        expect.objectContaining({ timeoutMs: expect.any(Number) })
       );
     });
   });

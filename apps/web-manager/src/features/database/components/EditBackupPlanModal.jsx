@@ -156,7 +156,13 @@ export default function EditBackupPlanModal() {
     startAction();
 
     let periodDateValue = '';
-    if (formData.periodType === 'Weekly') {
+    if (formData.periodType === 'Daily') {
+      // CMS's nv_get_val treats an empty-string value as if the parameter
+      // were absent entirely ("Parameter(period_date) missing in the
+      // request") — Daily does no further validation on the value itself,
+      // so any non-empty placeholder satisfies it.
+      periodDateValue = 'none';
+    } else if (formData.periodType === 'Weekly') {
       const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const selectedDays = Array.isArray(formData.periodDetail) ? formData.periodDetail : [];
       periodDateValue = selectedDays.map(dayNum => dayNames[dayNum - 1]).join(',');
@@ -228,6 +234,7 @@ export default function EditBackupPlanModal() {
         <ModalStatusError
           title={CM.operationInterrupted}
           error={actionError}
+          guidance={CM.backupPlanGuidance}
           onRetry={handleSave}
           onCancel={resetAction}
           retryText={CM.retry}
@@ -247,6 +254,7 @@ export default function EditBackupPlanModal() {
       icon="edit_calendar"
       maxWidth="700px"
       testId="edit-backup-plan"
+      onSubmit={handleSave}
       footer={
         <div className="flex justify-end gap-3 w-full">
           <Button data-testid="edit-backup-plan-cancel-btn" variant="ghost" onClick={handleClose}>{CM.cancel}</Button>
@@ -300,24 +308,20 @@ export default function EditBackupPlanModal() {
         <div className="space-y-4">
            <SectionHeader title={CM.executionSchedule} icon="schedule" />
           <div className="p-5 bg-slate-50/50 dark:bg-white/1 border border-slate-100 dark:border-white/4 rounded-2xl space-y-6 shadow-xs">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <Select 
-                  label={CM.rotationLabel}
-                  value={formData.periodType}
-                  onChange={(e) => handleInputChange('periodType', e.target.value)}
-                  options={[
-                    { value: 'Monthly', label: CM.monthly },
-                    { value: 'Weekly', label: CM.weekly },
-                    { value: 'Daily', label: CM.daily },
-                    { value: 'Specific days', label: CM.specificDays }
-                  ]}
-                  size="sm"
-                />
-              </div>
-              <div className="w-[140px]">
-                <Input label={CM.targetTime} type="time" value={formData.backupTime} onChange={(e) => handleInputChange('backupTime', e.target.value)} icon="nest_clock_farsight_analog" size="sm" />
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label={CM.rotationLabel}
+                value={formData.periodType}
+                onChange={(e) => handleInputChange('periodType', e.target.value)}
+                options={[
+                  { value: 'Monthly', label: CM.monthly },
+                  { value: 'Weekly', label: CM.weekly },
+                  { value: 'Daily', label: CM.daily },
+                  { value: 'Specific days', label: CM.specificDays }
+                ]}
+                size="sm"
+              />
+              <Input label={CM.targetTime} type="time" value={formData.backupTime} onChange={(e) => handleInputChange('backupTime', e.target.value)} icon="nest_clock_farsight_analog" size="sm" />
             </div>
 
             <div className="animate-in fade-in duration-300">

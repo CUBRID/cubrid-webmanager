@@ -117,6 +117,7 @@ export default function LoginDatabaseModal() {
         <ModalStatusError
           title={CM.error}
           error={error}
+          guidance={CM.loginDatabaseGuidance}
           onRetry={handleLogin}
           onCancel={resetAction}
           cancelText={CM.close}

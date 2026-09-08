@@ -19,6 +19,7 @@ import {
 } from '../../../database/databaseConfigurationSlice';
 import { fetchDatabaseUsers } from '../../../user/userSlice';
 import { openTab } from '../../layoutSlice';
+import { dbKey } from '../../../database/dbKey';
 import { TreeNode } from '../../../../components/domain/tree/TreeNode';
 import { Skeleton } from '../../../../components/ds/layout/Skeleton';
 import { Icon } from '../../../../components/ds/foundation/Icon';
@@ -152,13 +153,14 @@ export default function DatabaseTree({
       // stale right after a stop is enough to fire that first failing call,
       // and any re-render (tree re-toggle, unrelated state update) would
       // otherwise retry it immediately and reproduce the crash.
-      if (!databaseUsers[db.dbname] && !databaseUsersLoading[db.dbname] && !databaseUsersError[db.dbname]) {
+      const key = dbKey(selectedHostUid, db.dbname);
+      if (!databaseUsers[key] && !databaseUsersLoading[key] && !databaseUsersError[key]) {
         dispatch(fetchDatabaseUsers({ hostUid: selectedHostUid, dbname: db.dbname }));
       }
-      if (!backupSchedules[db.dbname] && !backupSchedulesLoading[db.dbname]) {
+      if (!backupSchedules[key] && !backupSchedulesLoading[key]) {
         dispatch(fetchBackupSchedule({ hostUid: selectedHostUid, dbname: db.dbname }));
       }
-      if (!queryPlans[db.dbname] && !queryPlansLoading[db.dbname]) {
+      if (!queryPlans[key] && !queryPlansLoading[key]) {
         dispatch(fetchQueryPlan({ hostUid: selectedHostUid, dbname: db.dbname }));
       }
     }, 50);
@@ -229,7 +231,8 @@ export default function DatabaseTree({
     <div className="space-y-0.5 px-2 py-2" onContextMenu={(e) => onRootContextMenu(e)}>
       {databases.map((db) => {
         const isActive = activeDatabases.includes(db.dbname);
-        const isLoggedIn = loggedInDatabases.includes(db.dbname);
+        const key = dbKey(selectedHostUid, db.dbname);
+        const isLoggedIn = loggedInDatabases.includes(key);
         const isDbSelected = db.dbname === selectedDatabase && !selectedDatabaseSubItem;
 
         const isDbInHa = isHostHA && haDbs.has(db.dbname);
@@ -241,6 +244,22 @@ export default function DatabaseTree({
                 HA
               </span>
             )}
+            {db.isProfileExists && (
+              <Icon
+                name="key"
+                size="10px"
+                weight={400}
+                className="text-slate-400 dark:text-slate-500 shrink-0"
+                title={CM.databaseCredentialsSaved}
+              />
+            )}
+            <Icon
+              name={isLoggedIn ? 'lock_open' : 'lock'}
+              size="10px"
+              weight={isLoggedIn ? 500 : 400}
+              className={`shrink-0 ${isLoggedIn ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-700'}`}
+              title={isLoggedIn ? CM.databaseLoggedIn : CM.databaseNotLoggedIn}
+            />
           </span>
         );
 
@@ -253,7 +272,7 @@ export default function DatabaseTree({
             level={1}
             isActive={isDbSelected}
             hasChildren={true}
-            isLoading={loggingInDatabases[db.dbname]}
+            isLoading={loggingInDatabases[key]}
             status={isActive ? 'on' : 'off'}
             onToggle={() => handleDbToggle(db, isActive, isLoggedIn)}
             onSelect={() => {
@@ -271,9 +290,9 @@ export default function DatabaseTree({
               isLoggedIn={isLoggedIn}
               selectedDatabase={selectedDatabase}
               selectedDatabaseSubItem={selectedDatabaseSubItem}
-              users={databaseUsers[db.dbname]}
-              isLoading={databaseUsersLoading[db.dbname]}
-              error={databaseUsersError[db.dbname]}
+              users={databaseUsers[key]}
+              isLoading={databaseUsersLoading[key]}
+              error={databaseUsersError[key]}
               onUsersContextMenu={onUsersContextMenu}
               onUserContextMenu={onUserContextMenu}
               onSelect={handleSelectSubItem}
@@ -286,10 +305,10 @@ export default function DatabaseTree({
               isLoggedIn={isLoggedIn}
               selectedDatabase={selectedDatabase}
               selectedDatabaseSubItem={selectedDatabaseSubItem}
-              backupSchedules={backupSchedules[db.dbname]}
-              backupSchedulesLoading={backupSchedulesLoading[db.dbname]}
-              queryPlans={queryPlans[db.dbname]}
-              queryPlansLoading={queryPlansLoading[db.dbname]}
+              backupSchedules={backupSchedules[key]}
+              backupSchedulesLoading={backupSchedulesLoading[key]}
+              queryPlans={queryPlans[key]}
+              queryPlansLoading={queryPlansLoading[key]}
               onJobAutomationContextMenu={onJobAutomationContextMenu}
               onBackupPlanContextMenu={onBackupPlanContextMenu}
               onQueryPlanContextMenu={onQueryPlanContextMenu}
@@ -305,8 +324,8 @@ export default function DatabaseTree({
               isLoggedIn={isLoggedIn}
               selectedDatabase={selectedDatabase}
               selectedDatabaseSubItem={selectedDatabaseSubItem}
-              spaceInfo={spaceInfo[db.dbname]}
-              spaceInfoLoading={spaceInfoLoading[db.dbname]}
+              spaceInfo={spaceInfo[key]}
+              spaceInfoLoading={spaceInfoLoading[key]}
               onSpaceContextMenu={onSpaceContextMenu}
               onSelect={handleSelectSubItem}
               onTabOpen={handleTabOpen}
@@ -350,7 +369,7 @@ const UsersFolder = React.memo(({ db, isActive, isLoggedIn, selectedDatabase, se
       {!isLoading && users?.length === 0 ? (
         <div className="px-10 py-3 opacity-30 flex items-center gap-2">
            <Icon name="block" size="xs" weight={300} />
-           <Typography variant="caption" className="italic font-bold uppercase tracking-widest text-[8px]">{CM.indexEmpty}</Typography>
+           <Typography variant="caption" className="italic font-bold uppercase tracking-widest text-[8px]">{CM.emptyListLabel}</Typography>
         </div>
       ) : (
         (users || []).map(u => {
@@ -388,7 +407,9 @@ const JobAutomationFolder = React.memo(({ db, isActive, isLoggedIn, selectedData
       isActive={isSelected}
       hasChildren={true}
       onToggle={() => {
-        if (selectedHostUid) {
+        // Same rule as UsersFolder's onToggle — never fetch per-db data
+        // (backup schedules, query plans) before an actual dbmtuserlogin.
+        if (selectedHostUid && isActive && isLoggedIn) {
           if (!backupSchedules && !backupSchedulesLoading) {
             dispatch(fetchBackupSchedule({ hostUid: selectedHostUid, dbname: db.dbname }));
           }
@@ -522,8 +543,9 @@ const SpaceFolder = React.memo(({ db, isActive, isLoggedIn, selectedDatabase, se
       onDoubleClick={() => onTabOpen(`db_space:${selectedHostUid}:${db.dbname}`)}
       onContextMenu={(e) => onSpaceContextMenu(e, db.dbname, isActive, isLoggedIn)}
       onToggle={() => {
-        // Only fetch if we have a host, aren't already loading, AND the data is genuinely missing
-        if (selectedHostUid && !spaceInfoLoading && !spaceInfo) {
+        // Same rule as UsersFolder/JobAutomationFolder's onToggle — never
+        // fetch per-db data (space info) before an actual dbmtuserlogin.
+        if (selectedHostUid && isActive && isLoggedIn && !spaceInfoLoading && !spaceInfo) {
           dispatch(fetchDatabaseSpaceInfo({ hostUid: selectedHostUid, dbname: db.dbname }));
         }
       }}

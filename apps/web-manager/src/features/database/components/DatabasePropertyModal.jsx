@@ -126,17 +126,20 @@ function ParamNameCell({ label, isModified }) {
 }
 
 /* ─── ParamValueCell — select for fixed-option keys, else free-text input ─── */
-function ParamValueCell({ paramKey, value, defaultValue, onChange }) {
+function ParamValueCell({ paramKey, value, defaultValue, onChange, disabled, disabledHint }) {
   const options = SELECT_OPTIONS_BY_KEY[paramKey];
   if (options) {
     return (
-      <Select
-        size="sm"
-        value={value ?? defaultValue}
-        options={options.map(o => ({ value: o, label: o }))}
-        onChange={e => onChange(e.target.value)}
-        className="w-full max-w-[260px]"
-      />
+      <div title={disabled ? disabledHint : undefined}>
+        <Select
+          size="sm"
+          value={value ?? defaultValue}
+          options={options.map(o => ({ value: o, label: o }))}
+          onChange={e => onChange(e.target.value)}
+          className="w-full max-w-[260px]"
+          disabled={disabled}
+        />
+      </div>
     );
   }
   return (
@@ -245,7 +248,7 @@ export default function DatabasePropertyModal() {
       resetAction();
       setParams({});
       setRawLines([]);
-      setActiveSidebar(selectedDatabase ? 'Connection Information' : 'Server Parameter');
+      setActiveSidebar('Server Parameter');
     }
   }, [isDatabasePropertyModalOpen, selectedDatabase, resetAction]);
 
@@ -387,6 +390,16 @@ export default function DatabasePropertyModal() {
     setParams({});
   };
 
+  // CUBRID forces auto_restart_server off in-process whenever HA is enabled
+  // (system_parameter.c's prm_tune_parameters — an abnormally-terminated
+  // server should fail over via HA, not blindly self-restart in place), so
+  // leaving this editable here would show a "yes" that the running server
+  // silently ignores. Mirrors the off-keyword set system_parameter.c itself
+  // recognizes for ha_mode (only "on" would previously have been detected).
+  const HA_MODE_OFF_KEYWORDS = ['off', 'no', 'n', '0', 'false'];
+  const isHaEnabled = params.ha_mode !== undefined
+    && !HA_MODE_OFF_KEYWORDS.includes(String(params.ha_mode).trim().toLowerCase());
+
   const generalRows = useMemo(() => GENERAL_PARAMS_KEYS.map(key => ({
     key,
     default: GENERAL_PARAMS_SCHEMA[key],
@@ -400,7 +413,7 @@ export default function DatabasePropertyModal() {
   , [params]);
 
   const navItems = selectedDatabase
-    ? [{ id: 'Connection Information', icon: 'cable', label: CM.connectionNavLabel }, { id: 'Server Parameter', icon: 'tune', label: CM.serverNavLabel }]
+    ? [{ id: 'Server Parameter', icon: 'tune', label: CM.serverNavLabel }, { id: 'Connection Information', icon: 'cable', label: CM.connectionNavLabel }]
     : [{ id: 'Server Parameter', icon: 'tune', label: CM.serverNavLabel }];
 
   const SERVER_TABS = [
@@ -438,6 +451,7 @@ export default function DatabasePropertyModal() {
       <ModalStatusError
         title={CM.applyFailedTitle}
         error={actionError}
+        guidance={CM.databasePropertyGuidance}
         onRetry={handleApply}
         onCancel={resetAction}
         retryText={CM.retryPatch}
@@ -456,9 +470,11 @@ export default function DatabasePropertyModal() {
       render: (_, row) => (
         <ParamValueCell
           paramKey={row.key}
-          value={row.value}
+          value={row.key === 'auto_restart_server' && isHaEnabled ? 'no' : row.value}
           defaultValue={row.default}
           onChange={(val) => setParams({ ...params, [row.key]: val })}
+          disabled={row.key === 'auto_restart_server' && isHaEnabled}
+          disabledHint={CM.autoRestartHaDisabledHint}
         />
       ),
     },

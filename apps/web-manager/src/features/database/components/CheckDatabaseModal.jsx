@@ -9,7 +9,6 @@ import { useCM } from '../../../constants/useCM';
 import { Icon } from '../../../components/ds/foundation/Icon';
 import { Modal } from '../../../components/ds/layout/Modal';
 import { Button } from '../../../components/ds/foundation/Button';
-import { Input } from '../../../components/ds/forms/Input';
 import { Toggle } from '../../../components/ds/forms/Toggle';
 import { Typography } from '../../../components/ds/foundation/Typography';
 import { useActionState } from '../../../infrastructure/hooks/useActionState';
@@ -23,23 +22,18 @@ export default function CheckDatabaseModal() {
   const CM = useCM();
   const dispatch = useDispatch();
   const { isCheckDatabaseModalOpen } = useSelector((state) => state.databaseUI, shallowEqual);
-  const { selectedDatabase, activeDatabases } = useSelector((state) => state.database, shallowEqual);
+  const { selectedDatabase } = useSelector((state) => state.database, shallowEqual);
   const { selectedHostUid } = useSelector((state) => state.host, shallowEqual);
-  const isActive = selectedDatabase && activeDatabases.includes(selectedDatabase);
 
   const { error, startAction, endSuccess, endError, resetAction, isLoading, isSuccess, isError } =
     useActionState();
-  const { runJob } = useCmsJob();
+  const { runJob, background, wasBackgrounded } = useCmsJob();
   const [jobStatus, setJobStatus] = useState(null);
   const [repair, setRepair] = useState(false);
-  const [dbuser, setDbuser] = useState('dba');
-  const [dbpasswd, setDbpasswd] = useState('');
 
   useEffect(() => {
     if (isCheckDatabaseModalOpen) {
       setRepair(false);
-      setDbuser('dba');
-      setDbpasswd('');
       resetAction();
     }
   }, [isCheckDatabaseModalOpen, resetAction]);
@@ -48,26 +42,18 @@ export default function CheckDatabaseModal() {
 
   const handleCheck = async () => {
     if (!selectedHostUid || !selectedDatabase) return;
-    // CMS authorizes checkdb against a per-connection credential cache
-    // populated by dbmtuserlogin — required whenever the database is
-    // online (see database-management.service.ts's loginIfCredentialsProvided).
-    if (isActive && !dbuser.trim()) {
-      endError(CM.dbUserRequiredWhileOnlineMsg);
-      return;
-    }
     startAction();
     try {
       await runJob(
         () =>
           databaseJobApi.submitCheck(selectedHostUid, selectedDatabase, {
             repairdb: repair ? 'y' : 'n',
-            ...(isActive && { dbuser: dbuser.trim(), dbpasswd }),
           }),
         { onProgress: (j) => setJobStatus(j.jobStatus ?? j.status) }
       );
-      endSuccess();
+      if (!wasBackgrounded()) endSuccess();
     } catch (err) {
-      endError(typeof err === 'string' ? err : err.message || CM.failure);
+      if (!wasBackgrounded()) endError(typeof err === 'string' ? err : err.message || CM.failure);
     }
   };
 
@@ -82,7 +68,7 @@ export default function CheckDatabaseModal() {
         <ModalStatusLoading
           title={CM.checkDatabase}
           subtitle={getCmsJobLoadingSubtitle(selectedDatabase, jobStatus, CM)}
-          onBackground={handleClose}
+          onBackground={() => { background(); handleClose(); }}
         />
       </Modal>
     );
@@ -107,6 +93,7 @@ export default function CheckDatabaseModal() {
         <ModalStatusError
           title={CM.failure}
           error={error}
+          guidance={CM.checkDbGuidance}
           onRetry={handleCheck}
           onCancel={resetAction}
           cancelText={CM.close}
@@ -123,6 +110,7 @@ export default function CheckDatabaseModal() {
       icon="verified"
       maxWidth="480px"
       testId="check-database"
+      onSubmit={handleCheck}
       footer={
         <div className="flex justify-end gap-2 w-full">
           <Button data-testid="check-database-cancel-btn" variant="secondary" onClick={handleClose}>{CM.cancel}</Button>
@@ -165,13 +153,6 @@ export default function CheckDatabaseModal() {
             <Toggle checked={repair} onChange={setRepair} />
           </div>
         </div>
-
-        {isActive && (
-          <div className="grid grid-cols-2 gap-3">
-            <Input data-testid="check-database-dbuser-input" label={CM.userName} value={dbuser} onChange={(e) => setDbuser(e.target.value)} icon="account_circle" size="sm" />
-            <Input data-testid="check-database-dbpasswd-input" type="password" label={CM.password} value={dbpasswd} onChange={(e) => setDbpasswd(e.target.value)} icon="password" size="sm" placeholder={CM.emptyAllowedPlaceholder} />
-          </div>
-        )}
       </div>
     </Modal>
   );

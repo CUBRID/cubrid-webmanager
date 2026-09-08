@@ -17,7 +17,9 @@ const initialState = {
     isOpen: false,
     type: 'success', // success, error, info
     title: '',
-    message: ''
+    message: '',
+    guidance: null, // string[] — curated "things to check" for error type
+    detail: null, // raw CMS/server error text, shown behind a "Show details" toggle
   },
   refreshCounter: 0,
 };
@@ -118,7 +120,9 @@ const layoutSlice = createSlice({
         isOpen: true,
         type: action.payload.type || 'success',
         title: action.payload.title || '',
-        message: action.payload.message || ''
+        message: action.payload.message || '',
+        guidance: action.payload.guidance || null,
+        detail: action.payload.detail || null,
       };
     },
     closeStatusModal: (state) => {

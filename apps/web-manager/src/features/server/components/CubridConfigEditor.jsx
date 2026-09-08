@@ -76,7 +76,13 @@ export default function CubridConfigEditor({ hostUid, confname }) {
       dispatch(setTabDirty({ tabId, isDirty: false }));
     } catch (err) {
       if (version !== loadVersion.current) return;
-      dispatch(showStatusModal({ type: 'error', title: CM.fetchFailed, message: CM.configFetchErrorMsg }));
+      dispatch(showStatusModal({
+        type: 'error',
+        title: CM.fetchFailed,
+        message: CM.configFetchErrorMsg,
+        guidance: CM.databasePropertyGuidance,
+        detail: err?.response?.data?.note || err?.message,
+      }));
     } finally {
       if (version === loadVersion.current) setLoading(false);
     }
@@ -112,7 +118,13 @@ export default function CubridConfigEditor({ hostUid, confname }) {
       dispatch(setTabDirty({ tabId, isDirty: false }));
       dispatch(showStatusModal({ type: 'success', title: CM.configSaved, message: CM.configUpdatedMsg(confname) }));
     } catch (err) {
-      dispatch(showStatusModal({ type: 'error', title: CM.saveFailed, message: err.response?.data?.message || CM.saveErrorFallbackMsg }));
+      dispatch(showStatusModal({
+        type: 'error',
+        title: CM.saveFailed,
+        message: CM.saveErrorFallbackMsg,
+        guidance: CM.databasePropertyGuidance,
+        detail: err?.response?.data?.note || err?.response?.data?.message || err?.message,
+      }));
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSelector, useDispatch , shallowEqual } from 'react-redux';
-import { updateAccount, fetchUser } from '../../auth/authSlice';
+import { useSelector, shallowEqual } from 'react-redux';
 import { authApi } from '../../auth/authApi';
 
 import { Icon } from '../../../components/ds/foundation/Icon';
@@ -13,13 +12,9 @@ import { useCM } from '../../../constants/useCM';
 export default function UserProfileModal({ isOpen, onClose }) {
   const CM = useCM();
   const { user } = useSelector((state) => state.auth, shallowEqual);
-  const [editMode, setEditMode] = useState(null); // 'profile' | 'password' | null
+  const [editMode, setEditMode] = useState(null); // 'password' | null
 
-  const [profile, setProfile] = useState({
-    id: user?.id || '',
-    department: user?.department || '',
-  });
-  const [editProfile, setEditProfile] = useState({ ...profile });
+  const [profile, setProfile] = useState({ id: user?.id || '' });
   const [passwords, setPasswords] = useState({
     oldPassword: '',
     newPassword: '',
@@ -28,9 +23,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (isOpen) {
-      const newProfile = { id: user?.id || '', department: user?.department || '' };
-      setProfile(newProfile);
-      setEditProfile(newProfile);
+      setProfile({ id: user?.id || '' });
       setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setEditMode(null);
       setError(null);
@@ -40,7 +33,6 @@ export default function UserProfileModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const dispatch = useDispatch();
   const globalLoading = useSelector((state) => state.auth.loading);
   const globalError = useSelector((state) => state.auth.error);
 
@@ -49,31 +41,19 @@ export default function UserProfileModal({ isOpen, onClose }) {
   const handleSave = async () => {
     setError(null);
     try {
-      if (editMode === 'password') {
-        if (!passwords.oldPassword || !passwords.newPassword || !passwords.confirmPassword) {
-          setError(CM.fillAllPasswordFieldsMsg);
-          return;
-        }
-        if (passwords.newPassword !== passwords.confirmPassword) {
-          setError(CM.newPasswordsDoNotMatchMsg);
-          return;
-        }
-        setLoading(true);
-        await authApi.updatePassword(passwords.oldPassword, passwords.newPassword);
-        setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
-        setEditMode(null);
-        setLoading(false);
-      } else if (editMode === 'profile') {
-        setLoading(true);
-        const resultAction = await dispatch(updateAccount({ department: editProfile.department }));
-        if (updateAccount.fulfilled.match(resultAction)) {
-          await dispatch(fetchUser());
-          setEditMode(null);
-        } else {
-          setError(resultAction.payload || CM.profileUpdateFailedMsg);
-        }
-        setLoading(false);
+      if (!passwords.oldPassword || !passwords.newPassword || !passwords.confirmPassword) {
+        setError(CM.fillAllPasswordFieldsMsg);
+        return;
       }
+      if (passwords.newPassword !== passwords.confirmPassword) {
+        setError(CM.newPasswordsDoNotMatchMsg);
+        return;
+      }
+      setLoading(true);
+      await authApi.updatePassword(passwords.oldPassword, passwords.newPassword);
+      setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setEditMode(null);
+      setLoading(false);
     } catch (err) {
       setError(err.response?.data?.message || CM.unexpectedErrorMsg);
       setLoading(false);
@@ -81,7 +61,6 @@ export default function UserProfileModal({ isOpen, onClose }) {
   };
 
   const handleCancel = () => {
-    setEditProfile({ ...profile });
     setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
     setEditMode(null);
     setError(null);
@@ -98,14 +77,11 @@ export default function UserProfileModal({ isOpen, onClose }) {
         icon="check_circle"
         className="min-w-[120px]"
       >
-        {editMode === 'password' ? CM.updatePasswordBtn : CM.saveChanges}
+        {CM.updatePasswordBtn}
       </Button>
     </>
   ) : (
     <div className="flex gap-2 w-full">
-      <Button variant="ghost" className="flex-1" onClick={() => setEditMode('profile')}>
-        {CM.editProfile}
-      </Button>
       <Button variant="ghost" className="flex-1" onClick={() => setEditMode('password')}>
         {CM.changePassword}
       </Button>
@@ -119,6 +95,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
       title={editMode === 'password' ? CM.changePassword : CM.accountProfile}
       icon={editMode === 'password' ? 'lock_reset' : 'account_circle'}
       maxWidth="max-w-[420px]"
+      onSubmit={editMode ? handleSave : undefined}
       footer={footer}
     >
       <div className="space-y-4 p-1">
@@ -159,44 +136,11 @@ export default function UserProfileModal({ isOpen, onClose }) {
                   <span className="text-[11px] text-slate-400 dark:text-slate-500 w-24 shrink-0">{CM.userIdLabel}</span>
                   <span className="text-[11.5px] font-bold text-slate-700 dark:text-slate-200 truncate">{profile.id || '—'}</span>
                 </div>
-                <div className="flex items-center px-4 py-3 gap-3">
-                  <Icon name="corporate_fare" size="16px" weight={300} className="text-slate-400 shrink-0" />
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 w-24 shrink-0">{CM.departmentLabel}</span>
-                  <span className="text-[11.5px] font-medium text-slate-700 dark:text-slate-300 truncate">{profile.department || CM.notAssignedFallback}</span>
-                </div>
               </div>
               </div>
             </div>
           </>
         )}
-
-        {/* Edit Profile Mode */}
-        {editMode === 'profile' && (
-          <div>
-            <SectionHeader title={CM.updateProfileSection} icon="edit_square" />
-            <div className="rounded-xl border border-slate-200 dark:border-white/8 overflow-hidden">
-            <div className="p-4 space-y-3">
-              {/* Read-only User ID */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">{CM.userIdLabel}</label>
-                <div className="h-10 px-3.5 flex items-center gap-2 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/8 rounded-xl">
-                  <Icon name="badge" size="14px" weight={300} className="text-slate-400" />
-                  <span className="text-[12px] font-bold text-slate-400 dark:text-slate-600">{profile.id}</span>
-                  <span className="ml-auto text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">{CM.lockedLabel}</span>
-                </div>
-              </div>
-              <Input
-                label={CM.departmentLabel}
-                value={editProfile.department}
-                onChange={(e) => setEditProfile((prev) => ({ ...prev, department: e.target.value }))}
-                placeholder={CM.departmentPlaceholderHint}
-                icon="corporate_fare"
-                disabled={loading || globalLoading}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
         {/* Change Password Mode */}
         {editMode === 'password' && (

@@ -58,8 +58,8 @@ const Component = function Brokers({ hostUid, isSection = false }) {
     { header: CM.asLabel, accessor: 'as', render: (val) => <span className="font-mono text-[12px]">{val}</span> },
     { header: CM.jqLabel, accessor: 'jq', render: (val) => <span className="font-mono text-[12px]">{val}</span> },
     { header: CM.reqLabel, accessor: 'req', render: (val) => <span className="font-mono text-[12px] font-semibold">{val}</span> },
-    { header: CM.tps, accessor: 'tps', render: (val) => <span className="font-mono text-[12px] text-amber-600 dark:text-amber-400 font-semibold">{val}</span> },
-    { header: CM.qps, accessor: 'qps', render: (val) => <span className="font-mono text-[12px] text-amber-600 dark:text-amber-400 font-semibold">{val}</span> },
+    { header: CM.tps, accessor: 'tps', render: (val) => <span className="font-mono text-[12px] text-amber-600 dark:text-amber-400 font-semibold">{val ?? '—'}</span> },
+    { header: CM.qps, accessor: 'qps', render: (val) => <span className="font-mono text-[12px] text-amber-600 dark:text-amber-400 font-semibold">{val ?? '—'}</span> },
     {
       header: CM.longTran, accessor: 'long_tran',
       render: (_, row) => <span className="font-mono text-[11px] text-slate-400">{row.long_tran || '0'} / {(parseFloat(row.long_tran_time || 0) * 1000).toFixed(0)}ms</span>

@@ -98,6 +98,24 @@ function hasSameDefinedAlias(a: string | undefined, b: string | undefined): bool
   return left !== '' && right !== '' && left === right;
 }
 
+/** Alias is a user-facing nickname, not a connection identity, so it's checked
+ * separately from findDuplicateHost — two different physical hosts can't share
+ * one, even though their address/port/id are all different. */
+export function findDuplicateAlias(
+  user: User,
+  alias: string,
+  excludeHostUid?: string
+): HostInfo | undefined {
+  let found: HostInfo | undefined;
+  forEachHost(user, ({ host }) => {
+    if (found || (excludeHostUid && host.uid === excludeHostUid)) return;
+    if (hasSameDefinedAlias(host.alias, alias)) {
+      found = host;
+    }
+  });
+  return found;
+}
+
 export function sanitizeHostGroups(user: User): SafeHostGroupsMap {
   const out: SafeHostGroupsMap = {};
   for (const [groupId, group] of Object.entries(readHostGroups(user))) {

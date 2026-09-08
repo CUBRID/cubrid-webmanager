@@ -155,17 +155,25 @@ const VolumeCategorization = memo(({ hostUid, dbname, dbinfo }) => {
   const CM = useCM();
   const dispatch = useDispatch();
 
-  const handleOpenCategory = (type) => {
+  // CMS's dbinfo summary rows use single-word "type" (PERMANENT/TEMPORARY)
+  // plus a separate "purpose" field to distinguish a permanent database's
+  // temp-purpose volumes (Permanent_TemporaryData) from its regular data
+  // volumes (Permanent_PermanentData) — both rows have type === 'PERMANENT',
+  // so purpose must be checked too, or the two rows are indistinguishable.
+  const handleOpenCategory = (type, purpose) => {
     let category = 'Permanent_PermanentData';
-    const t = type.toUpperCase();
-    if (t.includes('TEMPORARY')) {
-       category = t.includes('PERMANENT') ? 'Permanent_TemporaryData' : 'Temporary_TemporaryData';
-    } else if (t.includes('ACTIVE')) {
+    const t = (type || '').toUpperCase();
+    const p = (purpose || '').toUpperCase();
+    if (t.includes('ACTIVE')) {
        category = 'Active';
     } else if (t.includes('ARCHIVE')) {
        category = 'Archive';
+    } else if (t.includes('TEMPORARY')) {
+       category = 'Temporary_TemporaryData';
+    } else if (p.includes('TEMPORARY')) {
+       category = 'Permanent_TemporaryData';
     }
-    
+
     dispatch(openTab(`vol_category:${hostUid}:${dbname}:${category}`));
   };
 
@@ -186,13 +194,13 @@ const VolumeCategorization = memo(({ hostUid, dbname, dbinfo }) => {
           {
             header: CM.type,
             accessor: 'type',
-            width: '130px',
-            render: (val) => (
-              <button 
-                onClick={() => handleOpenCategory(val)}
+            width: '140px',
+            render: (val, row) => (
+              <button
+                onClick={() => handleOpenCategory(val, row.purpose)}
                 className={`px-1.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-tight border hover:brightness-110 active:scale-95 transition-all text-left ${TYPE_BADGE(val)}`}
               >
-                {val}
+                {row.purpose && row.purpose.toUpperCase() !== val?.toUpperCase() ? `${val} / ${row.purpose}` : val}
               </button>
             )
           },

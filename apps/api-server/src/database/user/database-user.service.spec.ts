@@ -5,13 +5,17 @@ import { CmsHttpsClientService } from '@cms-https-client/cms-https-client.servic
 import { UserRepositoryService } from '@repository';
 import { DatabaseError } from '@error/database/database-error';
 import { CmsError } from '@error/cms/cms-error';
+import { ValidationError } from '@error/validation/validation-error';
 
 describe('DatabaseUserService', () => {
   let service: DatabaseUserService;
   let hostService: jest.Mocked<HostService>;
   let cmsClient: jest.Mocked<CmsHttpsClientService>;
+  let repository: jest.Mocked<UserRepositoryService>;
 
-  const mockHost = {
+  const mockGroupId = 'group-host-uid-1';
+
+  const makeHost = () => ({
     uid: 'host-uid-1',
     id: 'host-1',
     address: 'localhost',
@@ -20,16 +24,34 @@ describe('DatabaseUserService', () => {
     token: 'test-token',
     initialLogin: false,
     alias: 'host-1',
-    dbProfiles: {},
-  };
+    dbProfiles: {
+      demodb: { dbname: 'demodb', id: 'dba', password: 'dba-password' },
+    },
+  });
+
+  let mockHost: ReturnType<typeof makeHost>;
 
   const mockUserId = 'user-123';
   const mockHostUid = 'host-uid-1';
 
   beforeEach(async () => {
+    mockHost = makeHost();
+
     const mockHostService = { findHostInternal: jest.fn() };
     const mockCmsClient = { postAuthenticated: jest.fn() };
-    const mockRepository = {};
+    const mockRepository = {
+      atomicUpdateUser: jest.fn(async (_userId: string, callback: (user: any) => Promise<any>) => {
+        const user = {
+          host_groups: {
+            [mockGroupId]: {
+              name: mockHost.alias,
+              hosts: { [mockHostUid]: mockHost },
+            },
+          },
+        };
+        return callback(user);
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -43,8 +65,9 @@ describe('DatabaseUserService', () => {
     service = module.get(DatabaseUserService);
     hostService = module.get(HostService);
     cmsClient = module.get(CmsHttpsClientService);
+    repository = module.get(UserRepositoryService);
 
-    hostService.findHostInternal.mockResolvedValue(mockHost as any);
+    hostService.findHostInternal.mockImplementation(async () => mockHost as any);
   });
 
   afterEach(() => {
@@ -323,6 +346,142 @@ describe('DatabaseUserService', () => {
       await expect(
         service.userVerify(mockUserId, mockHostUid, 'demodb', 'dba', '')
       ).rejects.toThrow(CmsError);
+    });
+  });
+
+  describe('ensureDbLogin', () => {
+    const successResponse = {
+      __EXEC_TIME: '10 ms',
+      note: 'none',
+      status: 'success',
+      task: 'dbmtuserlogin',
+    };
+
+    it('throws MissingDBCredentials without calling CMS when no profile is stored', async () => {
+      (mockHost as any).dbProfiles = {};
+
+      await expect(
+        service.ensureDbLogin(mockUserId, mockHostUid, 'demodb')
+      ).rejects.toThrow(ValidationError);
+      expect(cmsClient.postAuthenticated).not.toHaveBeenCalled();
+    });
+
+    it('logs in via the stored profile and reports reauthenticated on a cold cache', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(successResponse);
+
+      const result = await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+
+      expect(result).toEqual({ reauthenticated: true });
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ task: 'dbmtuserlogin', dbname: 'demodb', dbuser: 'dba' })
+      );
+    });
+
+    it('skips re-login on a warm cache for the same host token', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(successResponse);
+
+      await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+      cmsClient.postAuthenticated.mockClear();
+
+      const result = await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+
+      expect(result).toEqual({ reauthenticated: false });
+      expect(cmsClient.postAuthenticated).not.toHaveBeenCalled();
+    });
+
+    it('re-logs in once the host token changes, even with a warm cache', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue(successResponse);
+
+      await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+      mockHost.token = 'a-new-token-from-relogin';
+      cmsClient.postAuthenticated.mockClear();
+
+      const result = await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+
+      expect(result).toEqual({ reauthenticated: true });
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledTimes(1);
+    });
+
+    it('deletes the stored profile when CMS reports a bad password', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue({
+        __EXEC_TIME: '10 ms',
+        note: 'Incorrect or missing password.',
+        status: 'fail',
+        task: 'dbmtuserlogin',
+      });
+
+      await expect(
+        service.ensureDbLogin(mockUserId, mockHostUid, 'demodb')
+      ).rejects.toThrow(CmsError);
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+      expect(mockHost.dbProfiles).not.toHaveProperty('demodb');
+    });
+
+    it('keeps the stored profile when the login fails for an unrelated reason', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue({
+        __EXEC_TIME: '10 ms',
+        note: 'Cannot connect to host',
+        status: 'fail',
+        task: 'dbmtuserlogin',
+      });
+
+      await expect(
+        service.ensureDbLogin(mockUserId, mockHostUid, 'demodb')
+      ).rejects.toThrow(CmsError);
+
+      expect(repository.atomicUpdateUser).not.toHaveBeenCalled();
+      expect(mockHost.dbProfiles).toHaveProperty('demodb');
+    });
+  });
+
+  describe('deleteDbProfile', () => {
+    it('removes the stored profile', async () => {
+      await service.deleteDbProfile(mockUserId, mockHostUid, 'demodb');
+
+      expect(repository.atomicUpdateUser).toHaveBeenCalled();
+      expect(mockHost.dbProfiles).not.toHaveProperty('demodb');
+    });
+
+    it('clears the ensureDbLogin cache, so a later call re-checks for a profile', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue({
+        __EXEC_TIME: '10 ms',
+        note: 'none',
+        status: 'success',
+        task: 'dbmtuserlogin',
+      });
+      await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+
+      await service.deleteDbProfile(mockUserId, mockHostUid, 'demodb');
+
+      await expect(
+        service.ensureDbLogin(mockUserId, mockHostUid, 'demodb')
+      ).rejects.toThrow(ValidationError);
+    });
+  });
+
+  describe('logoutDatabase', () => {
+    it('clears the ensureDbLogin cache without touching the stored profile', async () => {
+      cmsClient.postAuthenticated.mockResolvedValue({
+        __EXEC_TIME: '10 ms',
+        note: 'none',
+        status: 'success',
+        task: 'dbmtuserlogin',
+      });
+      await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+      cmsClient.postAuthenticated.mockClear();
+
+      await service.logoutDatabase(mockUserId, mockHostUid, 'demodb');
+
+      // Profile untouched — logout is not the same as forgetting credentials.
+      expect(repository.atomicUpdateUser).not.toHaveBeenCalled();
+      expect(mockHost.dbProfiles).toHaveProperty('demodb');
+
+      // But the cache is gone, so the next ensureDbLogin re-authenticates.
+      const result = await service.ensureDbLogin(mockUserId, mockHostUid, 'demodb');
+      expect(result).toEqual({ reauthenticated: true });
+      expect(cmsClient.postAuthenticated).toHaveBeenCalledTimes(1);
     });
   });
 });

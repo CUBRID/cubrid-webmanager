@@ -6,7 +6,6 @@ import { toggleTheme } from '../../layout/layoutSlice';
 import { authApi } from '../authApi';
 import { Icon } from '../../../components/ds/foundation/Icon';
 import { Input } from '../../../components/ds/forms/Input';
-import { InfoBanner } from '../../../components/ds/foundation/InfoBanner';
 import LanguageToggle from '../../layout/components/LanguageToggle';
 import { useCM } from '../../../constants/useCM';
 
@@ -143,7 +142,7 @@ export default function LoginPage() {
             icon="account_circle"
             placeholder={CM.username}
             value={username}
-            onChange={(e) => { setUsername(e.target.value); if (errors.username) setErrors({ ...errors, username: '' }); }}
+            onChange={(e) => { setUsername(e.target.value); if (errors.username) setErrors({ ...errors, username: '' }); if (apiError) setApiError(''); }}
             error={errors.username}
             autoComplete="username"
           />
@@ -156,8 +155,8 @@ export default function LoginPage() {
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
             value={password}
-            onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors({ ...errors, password: '' }); }}
-            error={errors.password}
+            onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors({ ...errors, password: '' }); if (apiError) setApiError(''); }}
+            error={errors.password || apiError}
             autoComplete="current-password"
             suffix={
               <button
@@ -170,13 +169,6 @@ export default function LoginPage() {
               </button>
             }
           />
-
-          {/* API error */}
-          {apiError && (
-            <InfoBanner variant="danger" title={CM.authenticationFailed}>
-              {apiError}
-            </InfoBanner>
-          )}
 
           {/* Submit */}
           <button

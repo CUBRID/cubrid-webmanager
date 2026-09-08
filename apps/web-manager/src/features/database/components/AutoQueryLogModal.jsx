@@ -220,7 +220,7 @@ export default function AutoQueryLogModal() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 border border-slate-100 dark:border-white/5 rounded-xl overflow-hidden bg-white/50 dark:bg-bk-side/50">
+        <div className="flex-1 min-h-0 border border-slate-100 dark:border-white/5 rounded-xl overflow-y-auto custom-scrollbar bg-white/50 dark:bg-bk-side/50">
           <Table
             columns={columns}
             data={paginatedLogs}

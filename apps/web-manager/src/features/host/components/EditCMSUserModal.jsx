@@ -160,7 +160,7 @@ export default function EditCMSUserModal() {
 
   if (isError) return (
     <Modal isOpen title={CM.error} icon="error" iconVariant="danger" onClose={resetAction} maxWidth="500px">
-      <ModalStatusError title={CM.failure} error={actionError} onRetry={handleSave} onCancel={resetAction} />
+      <ModalStatusError title={CM.failure} error={actionError} guidance={CM.cmsUserGuidance} onRetry={handleSave} onCancel={resetAction} />
     </Modal>
   );
 
