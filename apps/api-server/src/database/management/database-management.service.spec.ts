@@ -62,6 +62,7 @@ describe('DatabaseManagementService', () => {
 
     const mockDatabaseInfoService = {
       startInfo: jest.fn().mockResolvedValue(mockStartInfoResponse),
+      effectiveHaDbForDbname: jest.fn().mockResolvedValue(false),
     };
 
     const mockDatabaseUserService = {

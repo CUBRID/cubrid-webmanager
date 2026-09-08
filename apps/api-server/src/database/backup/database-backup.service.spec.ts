@@ -10,6 +10,7 @@ import {
 } from '@api-interfaces';
 import { DatabaseError } from '@error/database/database-error';
 import { DatabaseUserService } from '@database/user/database-user.service';
+import { DatabaseInfoService } from '@database/info/database-info.service';
 import { HostError } from '@error/index';
 import { CmsError } from '@error/cms/cms-error';
 
@@ -48,6 +49,10 @@ describe('DatabaseBackupService', () => {
       ensureDbLogin: jest.fn().mockResolvedValue({ reauthenticated: false }),
     };
 
+    const mockDatabaseInfoService = {
+      effectiveHaDbForDbname: jest.fn().mockResolvedValue(false),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DatabaseBackupService,
@@ -62,6 +67,10 @@ describe('DatabaseBackupService', () => {
         {
           provide: DatabaseUserService,
           useValue: mockDatabaseUserService,
+        },
+        {
+          provide: DatabaseInfoService,
+          useValue: mockDatabaseInfoService,
         },
       ],
     }).compile();
