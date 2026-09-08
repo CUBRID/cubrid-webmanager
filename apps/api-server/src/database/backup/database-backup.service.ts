@@ -25,6 +25,8 @@ import {
 import { HostService } from '@host';
 import { Injectable } from '@nestjs/common';
 import { DatabaseUserService } from '@database/user/database-user.service';
+import { DatabaseInfoService } from '@database/info/database-info.service';
+import { DatabaseError } from '@error/database/database-error';
 import {
   AddBackupInfoCmsRequest,
   DeleteBackupInfoCmsRequest,
@@ -61,7 +63,8 @@ export class DatabaseBackupService extends BaseService {
   constructor(
     protected readonly hostService: HostService,
     protected readonly cmsClient: CmsHttpsClientService,
-    private readonly databaseUserService: DatabaseUserService
+    private readonly databaseUserService: DatabaseUserService,
+    private readonly databaseInfoService: DatabaseInfoService
   ) {
     super(hostService, cmsClient);
   }
@@ -387,6 +390,15 @@ export class DatabaseBackupService extends BaseService {
     request: RestoreDbClientRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<RestoreDbClientResponse> {
+    // restoredb never touches the ha_apply_info catalog (the replication
+    // apply-position bookmark) — CUBRID ships a dedicated `restoreslave`
+    // utility specifically because plain restoredb leaves that catalog
+    // stale after restoring, which desyncs the HA peer's replication apply
+    // position. Webmanager only ever invokes restoredb, never restoreslave.
+    if (await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname)) {
+      throw DatabaseError.RestoreNotSupportedForHaDatabase({ dbname });
+    }
+
     await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
 
     const cmsRequest: RestoreDbCmsRequest = {

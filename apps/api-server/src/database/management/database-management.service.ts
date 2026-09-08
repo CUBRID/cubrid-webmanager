@@ -307,6 +307,17 @@ export class DatabaseManagementService extends BaseService {
     request: LoadDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<LoadDatabaseCmsResponse> {
+    // loaddb always runs through CMS in SA mode (see cm_job_task.cpp's
+    // ts_loaddb — it rejects the request outright unless the database is
+    // fully stopped), and SA-mode processes reset ha_mode to off internally
+    // at startup (system_parameter.c's prm_tune_parameters). So even when
+    // this database is a genuine HA member, whatever loaddb writes here
+    // never replicates to its peer. Block it rather than let master/slave
+    // silently diverge.
+    if (await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname)) {
+      throw DatabaseError.LoadNotSupportedForHaDatabase({ dbname });
+    }
+
     await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
 
     const cmsRequest: LoadDatabaseCmsRequest = {
@@ -507,6 +518,14 @@ export class DatabaseManagementService extends BaseService {
     request: RenameDatabaseRequest,
     onUuid?: (uuid: string) => void | Promise<void>
   ): Promise<RenameDatabaseCmsResponse> {
+    // renamedb only renames the local databases.txt entry + volume files —
+    // it has no concept of cubrid_ha.conf's ha_db_list or the HA peer, so
+    // renaming an HA member here would leave the peer (and HA config) still
+    // referencing the old name, breaking HA pairing.
+    if (await this.databaseInfoService.effectiveHaDbForDbname(userId, hostUid, dbname)) {
+      throw DatabaseError.RenameNotSupportedForHaDatabase({ dbname });
+    }
+
     await this.databaseUserService.ensureDbLogin(userId, hostUid, dbname);
 
     const cmsRequest: RenameDatabaseCmsRequest = {

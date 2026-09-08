@@ -22,6 +22,7 @@ import {
   setSelectedDatabase, setSelectedDatabaseSubItem, clearDatabaseError, resetDatabaseState
 } from '../../database/databaseCoreSlice';
 import { dbKey } from '../../database/dbKey';
+import { isDatabaseInHa } from '../../host/haPeerUtils';
 
 import {
   fetchDatabaseVolumes, fetchDatabaseSpaceInfo, fetchDashboardVolumes, fetchDashboardLocks,
@@ -170,6 +171,24 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
   const { databases, activeDatabases, loggedInDatabases } = useSelector((state) => state.database, shallowEqual);
   const { brokers, logsLoading, adminLogsLoading, cmsLogsLoading, dbLogsLoading } = useSelector((state) => state.broker, shallowEqual);
   const isRefreshingLogs = logsLoading || adminLogsLoading || cmsLogsLoading || dbLogsLoading;
+  // Some Manage Database operations are unsafe (or outright break HA
+  // pairing) when run against a database that's a live HA member — block
+  // them at the menu instead of letting master/slave silently diverge:
+  //  - Load Database: loaddb always forces SA mode via CMS, which internally
+  //    resets ha_mode to off for the duration of the load, so nothing it
+  //    writes replicates to the HA peer (see known_issues.rst).
+  //  - Rename Database: renamedb has no HA awareness at all — it only
+  //    renames the local databases.txt entry + volume files, so afterward
+  //    cubrid_ha.conf's ha_db_list (and the peer, whose db keeps the old
+  //    name) no longer match the renamed local name, breaking HA pairing.
+  //  - Delete Database: removes this node's copy of an HA-paired database
+  //    outright — there is no way that leaves HA working correctly.
+  //  - Restore Database: restoredb never touches the ha_apply_info catalog
+  //    (the slave's replication-resume bookmark) — CUBRID ships a dedicated
+  //    `restoreslave` utility that resets it to the restored LSA specifically
+  //    because plain restoredb leaves it stale, which webmanager never uses.
+  const selectedHostHaHeartbeat = useSelector((state) => state.monitoring.hostsData[selectedHostUid]?.haHeartbeat);
+  const isSelectedDbInHa = isDatabaseInHa(selectedHostHaHeartbeat, dbContextMenu?.db);
 
 
   useEffect(() => {
@@ -1323,7 +1342,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="download"
               label={CM.manageDatabaseMenu.load}
-              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db))}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db)) || isSelectedDbInHa}
               onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openLoadDatabaseModal(dbContextMenu.db)); setDbContextMenu(null); }}
             />
             <MenuItem
@@ -1360,13 +1379,13 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="drive_file_rename_outline"
               label={CM.manageDatabaseMenu.rename}
-              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db))}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db)) || isSelectedDbInHa}
               onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openRenameDatabaseModal()); setDbContextMenu(null); }}
             />
             <MenuItem
               icon="restore"
               label={CM.manageDatabaseMenu.restore}
-              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db))}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db)) || isSelectedDbInHa}
               onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openRestoreDatabaseModal()); setDbContextMenu(null); }}
             />
             <MenuItem
@@ -1379,7 +1398,7 @@ export default function Sidebar({ isCollapsed, onAddHost }) {
             <MenuItem
               icon="delete"
               label={CM.manageDatabaseMenu.delete}
-              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db))}
+              disabled={dbContextMenu.isActive || !loggedInDatabases.includes(dbKey(selectedHostUid, dbContextMenu.db)) || isSelectedDbInHa}
               onClick={() => { dispatch(setSelectedDatabase(dbContextMenu.db)); dispatch(openDeleteDatabaseModal(dbContextMenu.db)); setDbContextMenu(null); }}
             />
           </SubMenu>
